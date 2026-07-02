@@ -9,6 +9,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..config import settings
 from ..models import Alert, Pod, PodMetric, SeverityEnum, StatusEnum, VirtualMachine, VMMetric
 
 router = APIRouter(prefix="/reports", tags=["Rapports"])
@@ -43,6 +44,13 @@ def summary(hours: int = Query(default=24, ge=1, le=720), db: Session = Depends(
     avg_cpu = sum(m.cpu_percent or 0 for m in vm_metrics) / max(len(vm_metrics), 1)
     avg_ram = sum(m.ram_percent or 0 for m in vm_metrics) / max(len(vm_metrics), 1)
     avg_pod_ram = sum(m.ram_mb or 0 for m in pod_metrics) / max(len(pod_metrics), 1)
+    resolved_alerts = db.query(Alert).filter(
+        Alert.status == StatusEnum.resolved,
+        Alert.resolved_at >= since,
+    ).count()
+    estimated_savings = settings.FINANCE_MONTHLY_INFRA_COST * settings.FINANCE_AUTOMATION_SAVINGS_RATE
+    period_factor = min(hours / 720, 1)
+    period_savings = estimated_savings * period_factor
 
     return {
         "period_hours": hours,
@@ -67,6 +75,13 @@ def summary(hours: int = Query(default=24, ge=1, le=720), db: Session = Depends(
             "warning_active": sum(1 for a in active_alerts if a.severity == SeverityEnum.warning),
             "triggered_in_period": len(period_alerts),
             "acknowledged_active": sum(1 for a in active_alerts if a.acknowledged),
+        },
+        "financial": {
+            "monthly_infra_cost": round(settings.FINANCE_MONTHLY_INFRA_COST, 2),
+            "automation_savings_rate": settings.FINANCE_AUTOMATION_SAVINGS_RATE,
+            "estimated_period_savings": round(period_savings, 2),
+            "resolved_alerts": resolved_alerts,
+            "roi_percent": round((period_savings / max(settings.FINANCE_MONTHLY_INFRA_COST * period_factor, 1)) * 100, 1),
         },
     }
 

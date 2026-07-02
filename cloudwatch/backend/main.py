@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
 from .collector import start_scheduler, stop_scheduler
-from .routers import vms, pods, alerts, reports
+from .routers import vms, pods, alerts, reports, observability
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,7 @@ app.include_router(vms.router,    prefix="/api")
 app.include_router(pods.router,   prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(observability.router, prefix="/api")
 
 
 @app.get("/api/health")
@@ -80,10 +81,15 @@ def dashboard_stats(
             Alert.status == StatusEnum.active,
             Alert.severity == "critical"
         ).count()
+        vm_availability = active_vms / max(total_vms, 1)
+        pod_availability = running_pods / max(total_pods, 1)
+        alert_penalty = min(45, crit_alerts * 12 + max(active_alerts - crit_alerts, 0) * 4)
+        health_score = max(0, min(100, round(((vm_availability * 45) + (pod_availability * 35) + 20) - alert_penalty)))
         return {
             "vms":   {"total": total_vms, "active": active_vms},
             "pods":  {"total": total_pods, "running": running_pods, "failed": failed_pods},
             "alerts":{"total_active": active_alerts, "critical": crit_alerts},
+            "health_score": health_score,
         }
     finally:
         db.close()

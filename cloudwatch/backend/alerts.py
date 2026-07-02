@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from .models import Alert, VirtualMachine, Pod, SeverityEnum, StatusEnum
 from .config import settings
 from .email_notifications import send_alert_email
+from .ai_agent import apply_decision
+from .remediation_agent import auto_remediate_if_needed
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,8 @@ def _create_alert(db: Session, *, severity: SeverityEnum, title: str, descriptio
         vm_id=vm_id, pod_id=pod_id,
         triggered_at=datetime.utcnow(),
     )
+    apply_decision(db, alert)
+    auto_remediate_if_needed(db, alert)
     db.add(alert)
     logger.warning("[ALERT] %s — %s", severity.value.upper(), title)
     send_alert_email(alert)
@@ -51,6 +55,7 @@ def _resolve_alert(db: Session, rule_name: str, vm_id: str = None, pod_id: str =
     if alert:
         alert.status = StatusEnum.resolved
         alert.resolved_at = datetime.utcnow()
+        apply_decision(db, alert)
         logger.info("[RESOLVED] %s", rule_name)
 
 

@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Optional
 from ..database import get_db
 from ..models import Alert, SeverityEnum, StatusEnum
+from ..ai_agent import apply_decision
+from ..remediation_agent import execute_remediation
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/alerts", tags=["Alertes"])
@@ -23,6 +25,17 @@ class AlertOut(BaseModel):
     acknowledged_by: Optional[str]
     acknowledged_at: Optional[datetime]
     operator_note: Optional[str]
+    ai_score: Optional[int]
+    ai_decision: Optional[str]
+    ai_category: Optional[str]
+    ai_reason: Optional[str]
+    ai_recommendation: Optional[str]
+    ai_confidence: Optional[float]
+    ai_updated_at: Optional[datetime]
+    remediation_action: Optional[str]
+    remediation_status: Optional[str]
+    remediation_message: Optional[str]
+    remediation_updated_at: Optional[datetime]
     vm_id: Optional[str]
     pod_id: Optional[str]
     triggered_at: datetime
@@ -34,6 +47,11 @@ class AlertOut(BaseModel):
 class AlertActionIn(BaseModel):
     operator: str = "operator"
     note: Optional[str] = None
+
+
+class RemediationIn(BaseModel):
+    operator: str = "AI-Agent"
+    force: bool = False
 
 
 @router.get("/", response_model=list[AlertOut])
@@ -64,6 +82,44 @@ def alerts_summary(db: Session = Depends(get_db)):
     }
 
 
+@router.post("/agent/reprocess", response_model=list[AlertOut])
+def reprocess_active_alerts(db: Session = Depends(get_db)):
+    """Recalcule les decisions IA pour toutes les alertes actives."""
+    alerts = db.query(Alert).filter(Alert.status == StatusEnum.active).all()
+    for alert in alerts:
+        apply_decision(db, alert)
+    db.commit()
+    for alert in alerts:
+        db.refresh(alert)
+    return alerts
+
+
+@router.post("/{alert_id}/agent", response_model=AlertOut)
+def reprocess_alert(alert_id: int, db: Session = Depends(get_db)):
+    """Recalcule la decision IA d'une alerte."""
+    alert = db.get(Alert, alert_id)
+    if not alert:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Alert not found")
+    apply_decision(db, alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+@router.post("/{alert_id}/remediate", response_model=AlertOut)
+def remediate_alert(alert_id: int, payload: RemediationIn, db: Session = Depends(get_db)):
+    """Lance une intervention rapide controlee pour une alerte."""
+    alert = db.get(Alert, alert_id)
+    if not alert:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Alert not found")
+    execute_remediation(db, alert, operator=payload.operator, force=payload.force)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
 @router.patch("/{alert_id}/acknowledge", response_model=AlertOut)
 def acknowledge_alert(alert_id: int, payload: AlertActionIn, db: Session = Depends(get_db)):
     """Acquitter une alerte et garder une trace operateur."""
@@ -76,6 +132,7 @@ def acknowledge_alert(alert_id: int, payload: AlertActionIn, db: Session = Depen
     alert.acknowledged_at = datetime.utcnow()
     if payload.note:
         alert.operator_note = payload.note
+    apply_decision(db, alert)
     db.commit()
     db.refresh(alert)
     return alert
@@ -96,6 +153,7 @@ def resolve_alert(alert_id: int, payload: AlertActionIn | None = None, db: Sessi
         alert.acknowledged_at = alert.acknowledged_at or datetime.utcnow()
         if payload.note:
             alert.operator_note = payload.note
+    apply_decision(db, alert)
     db.commit()
     db.refresh(alert)
     return alert

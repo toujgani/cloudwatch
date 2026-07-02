@@ -46,5 +46,24 @@ class Settings(BaseSettings):
     # Mock mode — test sans OpenStack/OpenShift
     MOCK_MODE: bool = False
 
+    # Grafana API
+    GRAFANA_URL: str = "http://localhost:3000"
+    GRAFANA_API_TOKEN: str = ""
+    GRAFANA_METRICS_DATASOURCE_UID: str = ""
+    GRAFANA_LOGS_DATASOURCE_UID: str = ""
+    GRAFANA_TRACES_DATASOURCE_UID: str = ""
+    GRAFANA_VERIFY_SSL: bool = True
+
+    # Financial dashboard assumptions
+    FINANCE_MONTHLY_INFRA_COST: float = 10000.0
+    FINANCE_AUTOMATION_SAVINGS_RATE: float = 0.12
+
+    # AI remediation guardrails
+    AUTO_REMEDIATION_ENABLED: bool = False
+    AUTO_REMEDIATION_DRY_RUN: bool = True
+    AUTO_REMEDIATION_MIN_SCORE: int = 85
+    REMEDIATION_STORAGE_INCREMENT_GB: int = 20
+    REMEDIATION_MEMORY_SCALE_PERCENT: int = 25
+
 
 settings = Settings()

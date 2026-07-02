@@ -39,11 +39,12 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12, marginBottom: 18 }}>
         <Metric label="Disponibilite VMs" value={`${vmAvailability}%`} sub={`${summary?.availability.active_vms ?? 0}/${summary?.inventory.vms ?? 0} actives`} color="var(--blue2)" />
         <Metric label="Disponibilite Pods" value={`${podAvailability}%`} sub={`${summary?.availability.running_pods ?? 0}/${summary?.inventory.pods ?? 0} running`} color="var(--teal2)" />
         <Metric label="CPU moyen VM" value={`${summary?.metrics.avg_vm_cpu ?? 0}%`} sub="moyenne sur la periode" color="var(--yellow)" />
         <Metric label="Alertes actives" value={summary?.alerts.active ?? 0} sub={`${summary?.alerts.critical_active ?? 0} critiques`} color="var(--red)" />
+        <Metric label="ROI automatisation" value={`${summary?.financial.roi_percent ?? 0}%`} sub={`${summary?.financial.estimated_period_savings ?? 0} MAD economises`} color="var(--green)" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.75fr', gap: 12 }}>

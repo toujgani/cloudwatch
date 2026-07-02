@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { acknowledgeAlert, exportUrl, getAlerts, resolveAlert } from '../api/client'
+import { acknowledgeAlert, exportUrl, getAlerts, remediateAlert, reprocessAlertAgent, resolveAlert } from '../api/client'
 import type { Alert } from '../types'
 
 type Filter = 'active' | 'all' | 'resolved'
@@ -10,6 +10,7 @@ export default function AlertsPage() {
   const [busy, setBusy] = useState<number | null>(null)
   const [operator, setOperator] = useState('NOC')
   const [note, setNote] = useState('')
+  const [agentBusy, setAgentBusy] = useState(false)
 
   const load = () => getAlerts(filter === 'all' ? undefined : filter).then(setAlerts)
 
@@ -19,13 +20,21 @@ export default function AlertsPage() {
     return () => clearInterval(t)
   }, [filter])
 
-  const act = async (id: number, action: 'ack' | 'resolve') => {
+  const act = async (id: number, action: 'ack' | 'resolve' | 'remediate') => {
     setBusy(id)
     if (action === 'ack') await acknowledgeAlert(id, operator, note || undefined)
     if (action === 'resolve') await resolveAlert(id, operator, note || undefined)
+    if (action === 'remediate') await remediateAlert(id, operator || 'AI-Agent', true)
     setNote('')
     await load()
     setBusy(null)
+  }
+
+  const reprocessAgent = async () => {
+    setAgentBusy(true)
+    await reprocessAlertAgent()
+    await load()
+    setAgentBusy(false)
   }
 
   const counts = {
@@ -41,6 +50,9 @@ export default function AlertsPage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Alertes intelligentes</h2>
           <div style={{ color: 'var(--text3)', fontSize: 12 }}>Traitement, acquittement, resolution et export des incidents.</div>
         </div>
+        <button className="btn" disabled={agentBusy} onClick={reprocessAgent}>
+          {agentBusy ? 'Analyse...' : 'Agent IA'}
+        </button>
         <a className="btn" href={exportUrl('alerts', filter === 'all' ? undefined : filter)}>Exporter CSV</a>
       </div>
 
@@ -92,6 +104,7 @@ export default function AlertsPage() {
                     <span className={`badge badge-${a.severity}`}>{a.severity}</span>
                     <span className={`badge badge-${a.status === 'active' ? 'warning' : 'running'}`}>{a.status}</span>
                     {a.acknowledged && <span className="badge badge-info">Vu par {a.acknowledged_by || 'operator'}</span>}
+                    {a.ai_decision && <span className="badge badge-info">IA {a.ai_decision}</span>}
                   </div>
                   <div style={{ color: 'var(--text2)', fontSize: 12, marginBottom: 8 }}>{a.description}</div>
                   <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: 'var(--text3)', fontSize: 11 }}>
@@ -101,10 +114,33 @@ export default function AlertsPage() {
                     <span>Declenchee: {new Date(a.triggered_at).toLocaleString('fr-FR')}</span>
                     {a.operator_note && <span>Note: <strong style={{ color: 'var(--text2)' }}>{a.operator_note}</strong></span>}
                   </div>
+                  {a.ai_score != null && (
+                    <div style={{ marginTop: 10, padding: '9px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(79,127,255,0.05)' }}>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>
+                        <span>Health impact: <strong style={{ color }}>{a.ai_score}/100</strong></span>
+                        {a.ai_category && <span>Categorie: <strong style={{ color: 'var(--text2)' }}>{a.ai_category}</strong></span>}
+                        {a.ai_confidence != null && <span>Confiance: <strong style={{ color: 'var(--text2)' }}>{Math.round(a.ai_confidence * 100)}%</strong></span>}
+                      </div>
+                      <div style={{ color: 'var(--text2)', fontSize: 12 }}>{a.ai_recommendation}</div>
+                      {a.ai_reason && <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 4 }}>Raison: {a.ai_reason}</div>}
+                    </div>
+                  )}
+                  {a.remediation_action && (
+                    <div style={{ marginTop: 8, padding: '9px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(26,188,156,0.05)' }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>
+                        <span>Action rapide: <strong style={{ color: 'var(--text2)' }}>{a.remediation_action}</strong></span>
+                        {a.remediation_status && <span>Statut: <strong style={{ color: 'var(--text2)' }}>{a.remediation_status}</strong></span>}
+                      </div>
+                      {a.remediation_message && <div style={{ color: 'var(--text2)', fontSize: 12 }}>{a.remediation_message}</div>}
+                    </div>
+                  )}
                 </div>
 
                 {a.status === 'active' && (
                   <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn" disabled={busy === a.id} onClick={() => act(a.id, 'remediate')}>
+                      Intervention rapide
+                    </button>
                     {!a.acknowledged && (
                       <button className="btn" disabled={busy === a.id} onClick={() => act(a.id, 'ack')}>
                         Acquitter

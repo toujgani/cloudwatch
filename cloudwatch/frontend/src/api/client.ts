@@ -16,6 +16,15 @@ export const acknowledgeAlert   = (id: number, operator = 'operator', note?: str
   api.patch<Alert>(`/alerts/${id}/acknowledge`, { operator, note }).then(r => r.data)
 export const resolveAlert       = (id: number, operator = 'operator', note?: string) =>
   api.patch<Alert>(`/alerts/${id}/resolve`, { operator, note }).then(r => r.data)
+export const reprocessAlertAgent = ()                      => api.post<Alert[]>('/alerts/agent/reprocess').then(r => r.data)
+export const remediateAlert     = (id: number, operator = 'AI-Agent', force = false) =>
+  api.post<Alert>(`/alerts/${id}/remediate`, { operator, force }).then(r => r.data)
+export const getGrafanaHealth   = ()                      => api.get('/observability/grafana/health').then(r => r.data)
+export const getInfraMetrics    = (hours = 1)             => api.get(`/observability/metrics/infra?hours=${hours}`).then(r => r.data)
+export const getGrafanaLogs     = (selector?: string, hours = 1) =>
+  api.get(`/observability/logs?hours=${hours}${selector ? `&selector=${encodeURIComponent(selector)}` : ''}`).then(r => r.data)
+export const getGrafanaTraces   = (service?: string, hours = 1) =>
+  api.get(`/observability/traces?hours=${hours}${service ? `&service=${encodeURIComponent(service)}` : ''}`).then(r => r.data)
 export const getReportSummary   = (hours = 24)            => api.get<ReportSummary>(`/reports/summary?hours=${hours}`).then(r => r.data)
 export const exportUrl          = (kind: 'alerts'|'vms'|'pods', status?: string) =>
   `/api/reports/export/${kind}${status ? `?status=${status}` : ''}`

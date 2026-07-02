@@ -63,7 +63,7 @@ export default function Dashboard() {
         <KpiCard label="Machines virtuelles" value={stats?.vms.total ?? '—'} sub={`${stats?.vms.active ?? 0} actives`} color="var(--blue2)" />
         <KpiCard label="Pods OpenShift"       value={stats?.pods.total ?? '—'} sub={`${stats?.pods.running ?? 0} running`}  color="var(--teal2)" />
         <KpiCard label="Alertes actives"      value={stats?.alerts.total_active ?? '—'} sub={`${stats?.alerts.critical ?? 0} critiques`} color="var(--red)" />
-        <KpiCard label="VMs actives"          value={stats ? `${Math.round((stats.vms.active/Math.max(stats.vms.total,1))*100)}%` : '—'} sub="disponibilité" color="var(--yellow)" />
+        <KpiCard label="Health Score"         value={stats ? `${stats.health_score}/100` : '—'} sub="sante globale infra" color="var(--yellow)" />
       </div>
 
       {/* Charts row */}

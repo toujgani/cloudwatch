@@ -38,6 +38,17 @@ def _ensure_alert_operation_columns():
         "acknowledged_by": "VARCHAR",
         "acknowledged_at": "DATETIME",
         "operator_note": "TEXT",
+        "ai_score": "INTEGER",
+        "ai_decision": "VARCHAR",
+        "ai_category": "VARCHAR",
+        "ai_reason": "TEXT",
+        "ai_recommendation": "TEXT",
+        "ai_confidence": "FLOAT",
+        "ai_updated_at": "DATETIME",
+        "remediation_action": "VARCHAR",
+        "remediation_status": "VARCHAR",
+        "remediation_message": "TEXT",
+        "remediation_updated_at": "DATETIME",
     }
 
     with engine.begin() as conn:
