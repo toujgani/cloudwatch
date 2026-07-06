@@ -44,6 +44,28 @@ def list_pods(namespace: str = "") -> list[dict]:
     return items
 
 
+def list_nodes() -> list[dict]:
+    """Liste les nodes Kubernetes/OpenShift."""
+    resp = _session().get(_url("/api/v1/nodes"), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("items", [])
+
+
+def list_namespaces() -> list[dict]:
+    """Liste les namespaces Kubernetes/OpenShift."""
+    resp = _session().get(_url("/api/v1/namespaces"), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("items", [])
+
+
+def list_deployments(namespace: str = "") -> list[dict]:
+    """Liste les deployments apps/v1."""
+    path = f"/apis/apps/v1/namespaces/{namespace}/deployments" if namespace else "/apis/apps/v1/deployments"
+    resp = _session().get(_url(path), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("items", [])
+
+
 def list_pod_metrics() -> dict[str, dict]:
     """
     Métriques CPU/RAM via metrics-server (metrics.k8s.io/v1beta1).
@@ -97,6 +119,17 @@ def list_pod_metrics() -> dict[str, dict]:
     return result
 
 
+def delete_pod(pod_id: str) -> None:
+    """Supprime un pod namespace/name; son controller le recréera si applicable."""
+    if "/" not in pod_id:
+        raise ValueError("pod_id must be in namespace/name format")
+    namespace, name = pod_id.split("/", 1)
+    path = f"/api/v1/namespaces/{namespace}/pods/{name}"
+    resp = _session().delete(_url(path), timeout=15)
+    if resp.status_code not in (200, 202):
+        resp.raise_for_status()
+
+
 def parse_pod(item: dict, metrics: dict) -> dict:
     """Construit un dict normalisé depuis les données brutes Kubernetes."""
     meta   = item.get("metadata", {})
@@ -132,3 +165,39 @@ def parse_pod(item: dict, metrics: dict) -> dict:
         "cpu_millicores":m.get("cpu_millicores"),
         "ram_mb":        m.get("ram_mb"),
     }
+
+
+def parse_node(item: dict) -> dict:
+    meta = item.get("metadata", {})
+    status = item.get("status", {})
+    capacity = status.get("capacity", {})
+    allocatable = status.get("allocatable", {})
+    conditions = status.get("conditions", [])
+    ready = next((c for c in conditions if c.get("type") == "Ready"), {})
+    pressures = {
+        c.get("type"): c.get("status")
+        for c in conditions
+        if c.get("type") in ("MemoryPressure", "DiskPressure", "PIDPressure", "NetworkUnavailable")
+    }
+
+    return {
+        "name": meta.get("name", ""),
+        "role": _node_role(meta.get("labels", {})),
+        "status": "Ready" if ready.get("status") == "True" else "NotReady",
+        "kubelet_version": status.get("nodeInfo", {}).get("kubeletVersion", ""),
+        "os_image": status.get("nodeInfo", {}).get("osImage", ""),
+        "cpu_capacity": capacity.get("cpu", "0"),
+        "cpu_allocatable": allocatable.get("cpu", "0"),
+        "memory_capacity": capacity.get("memory", "0"),
+        "memory_allocatable": allocatable.get("memory", "0"),
+        "pods_capacity": capacity.get("pods", "0"),
+        "pods_allocatable": allocatable.get("pods", "0"),
+        "pressures": pressures,
+    }
+
+
+def _node_role(labels: dict) -> str:
+    for key in labels:
+        if key.startswith("node-role.kubernetes.io/"):
+            return key.rsplit("/", 1)[-1] or "worker"
+    return "worker"

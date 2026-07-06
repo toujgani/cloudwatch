@@ -1,14 +1,35 @@
 import { NavLink } from 'react-router-dom'
+import type { AuthUser, UserRole } from '../types'
 
 const links = [
-  { to: '/', icon: 'DB', label: 'Dashboard' },
-  { to: '/alerts', icon: 'AL', label: 'Alertes' },
-  { to: '/reports', icon: 'CSV', label: 'Rapports' },
-  { to: '/vms', icon: 'VM', label: 'Machines virtuelles' },
-  { to: '/pods', icon: 'OS', label: 'Pods OpenShift' },
+  { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'viewer'] },
+  { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin'] },
+  { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
+  { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin'] },
+  { to: '/grafana', icon: 'GRF', label: 'Visualisations', roles: ['admin', 'viewer'] },
+  { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'viewer'] },
+  { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin'] },
+  { to: '/vms', icon: 'VM', label: 'Machines virtuelles', roles: ['admin'] },
+  { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin'] },
 ]
 
-export default function Sidebar() {
+const adminModes: { role: UserRole; label: string }[] = [
+  { role: 'admin', label: 'Admin' },
+  { role: 'operator', label: 'Operateur' },
+  { role: 'viewer', label: 'Viewer' },
+]
+
+export default function Sidebar({
+  user,
+  onLogout,
+  onSwitchRole,
+}: {
+  user: AuthUser
+  onLogout: () => void
+  onSwitchRole: (role: UserRole) => void
+}) {
+  const visibleLinks = links.filter(link => link.roles.includes(user.role))
+
   return (
     <aside style={{
       width: 220, background: 'var(--bg2)', borderRight: '1px solid var(--border)',
@@ -42,7 +63,7 @@ export default function Sidebar() {
         <div style={{ padding: '8px 16px 4px', fontSize: 10, color: 'var(--text3)', letterSpacing: '1.2px', textTransform: 'uppercase' }}>
           Navigation
         </div>
-        {links.map(l => (
+        {visibleLinks.map(l => (
           <NavLink key={l.to} to={l.to} end={l.to === '/'}
             style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', gap: 10,
@@ -71,11 +92,35 @@ export default function Sidebar() {
       </nav>
 
       <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-        <span style={{
-          width: 7, height: 7, borderRadius: '50%', background: 'var(--green)',
-          boxShadow: '0 0 6px var(--green)', display: 'inline-block', marginRight: 6,
-        }} className="pulse" />
-        <span style={{ fontSize: 11, color: 'var(--text3)' }}>Collecte active - 30s</span>
+        {user.baseRole === 'admin' && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
+              Mode d'acces
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+              {adminModes.map(mode => (
+                <button
+                  key={mode.role}
+                  className={user.role === mode.role ? 'btn btn-primary' : 'btn'}
+                  onClick={() => onSwitchRole(mode.role)}
+                  style={{ width: '100%', minHeight: 28 }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <button className="btn" onClick={onLogout} style={{ width: '100%', marginBottom: 10 }}>
+          Deconnexion
+        </button>
+        <div>
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%', background: 'var(--green)',
+            boxShadow: '0 0 6px var(--green)', display: 'inline-block', marginRight: 6,
+          }} className="pulse" />
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Collecte active - 30s</span>
+        </div>
       </div>
     </aside>
   )

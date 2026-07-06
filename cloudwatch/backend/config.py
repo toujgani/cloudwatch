@@ -1,8 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+
+
+ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     # Database
     DATABASE_URL: str = "postgresql://cloudwatch:password@localhost:5432/cloudwatch"
@@ -59,11 +63,16 @@ class Settings(BaseSettings):
     FINANCE_AUTOMATION_SAVINGS_RATE: float = 0.12
 
     # AI remediation guardrails
-    AUTO_REMEDIATION_ENABLED: bool = False
+    AUTO_REMEDIATION_ENABLED: bool = True
     AUTO_REMEDIATION_DRY_RUN: bool = True
-    AUTO_REMEDIATION_MIN_SCORE: int = 85
+    AUTO_REMEDIATION_MIN_SCORE: int = 55
     REMEDIATION_STORAGE_INCREMENT_GB: int = 20
     REMEDIATION_MEMORY_SCALE_PERCENT: int = 25
+    REMEDIATION_MAX_ACTIONS_PER_HOUR: int = 5
+    REMEDIATION_MAX_STORAGE_GB: int = 500
+    REMEDIATION_MEMORY_FLAVOR_MAP: str = "{}"
+    REMEDIATION_VM_RECOVERY_ACTION: str = "hard_reboot"  # hard_reboot | stop | live_migrate
+    REMEDIATION_K8S_SAFE_NAMESPACES: str = "default"
 
 
 settings = Settings()

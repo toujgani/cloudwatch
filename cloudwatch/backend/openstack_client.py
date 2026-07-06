@@ -110,6 +110,78 @@ def get_server_diagnostics(server_id: str) -> dict:
     return resp.json()
 
 
+def stop_server(server_id: str) -> None:
+    """Stoppe une VM OpenStack en urgence via Nova."""
+    url = f"{_endpoint('compute')}/servers/{server_id}/action"
+    resp = requests.post(url, headers=_headers(), json={"os-stop": None}, timeout=15)
+    resp.raise_for_status()
+
+
+def hard_reboot_server(server_id: str) -> None:
+    """Force un reboot Nova quand une VM est bloquee."""
+    url = f"{_endpoint('compute')}/servers/{server_id}/action"
+    resp = requests.post(url, headers=_headers(), json={"reboot": {"type": "HARD"}}, timeout=20)
+    resp.raise_for_status()
+
+
+def live_migrate_server(server_id: str, host: str | None = None) -> None:
+    """Demande une live migration Nova vers un autre compute si possible."""
+    payload = {"os-migrateLive": {"block_migration": "auto", "host": host}}
+    url = f"{_endpoint('compute')}/servers/{server_id}/action"
+    resp = requests.post(url, headers=_headers(), json=payload, timeout=20)
+    resp.raise_for_status()
+
+
+def resize_server(server_id: str, flavor_ref: str) -> None:
+    """Change le flavor d'une VM. Nova peut demander un confirm_resize ensuite."""
+    url = f"{_endpoint('compute')}/servers/{server_id}/action"
+    resp = requests.post(url, headers=_headers(), json={"resize": {"flavorRef": flavor_ref}}, timeout=20)
+    resp.raise_for_status()
+
+
+def get_server(server_id: str) -> dict:
+    """Retourne le detail d'une VM Nova."""
+    url = f"{_endpoint('compute')}/servers/{server_id}"
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("server", {})
+
+
+def get_attached_volume_ids(server_id: str) -> list[str]:
+    """Liste les volumes attaches a une VM via les donnees Nova."""
+    server = get_server(server_id)
+    attachments = server.get("os-extended-volumes:volumes_attached", [])
+    return [item.get("id") for item in attachments if item.get("id")]
+
+
+def get_volume(volume_id: str) -> dict:
+    """Retourne le detail d'un volume Cinder."""
+    try:
+        base = _endpoint("volumev3")
+    except RuntimeError:
+        base = _endpoint("volume")
+    url = f"{base}/volumes/{volume_id}"
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("volume", {})
+
+
+def extend_volume(volume_id: str, new_size_gb: int) -> None:
+    """Augmente la taille d'un volume Cinder."""
+    try:
+        base = _endpoint("volumev3")
+    except RuntimeError:
+        base = _endpoint("volume")
+    url = f"{base}/volumes/{volume_id}/action"
+    resp = requests.post(
+        url,
+        headers=_headers(),
+        json={"os-extend": {"new_size": int(new_size_gb)}},
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
 def parse_vm(server: dict, diagnostics: dict) -> dict:
     """
     Construit un dict normalisé à partir des données brutes OpenStack.

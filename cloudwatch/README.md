@@ -180,3 +180,44 @@ Règles automatiques (non configurables) :
 | Graphes      | Recharts                 |
 | HTTP client  | Axios                    |
 | Build tool   | Vite                     |
+
+---
+
+## Agent AIOps d'auto-remediation
+
+L'agent analyse les alertes actives, choisit une action, construit un plan
+explicable et applique l'action seulement si les garde-fous l'autorisent.
+
+Actions supportees :
+
+- stockage sature : extension du premier volume attache via Cinder ;
+- RAM saturee : resize OpenStack selon `REMEDIATION_MEMORY_FLAVOR_MAP` ;
+- VM bloquee ou en erreur : `hard_reboot`, `stop` ou `live_migrate` ;
+- pod CrashLoop/restarts : suppression du pod si son namespace est autorise ;
+- autres cas : recommandation operateur sans changement automatique.
+
+Endpoints :
+
+| Methode | URL                                  | Description                           |
+|---------|--------------------------------------|---------------------------------------|
+| POST    | `/api/alerts/{id}/remediate`         | Lance l'agent sur une alerte          |
+| POST    | `/api/alerts/agent/remediate-active` | Lance l'agent sur les alertes actives |
+| POST    | `/api/alerts/agent/reprocess`        | Recalcule les decisions IA            |
+
+Variables principales :
+
+```env
+AUTO_REMEDIATION_ENABLED=true
+AUTO_REMEDIATION_DRY_RUN=true
+AUTO_REMEDIATION_MIN_SCORE=55
+REMEDIATION_MAX_ACTIONS_PER_HOUR=5
+REMEDIATION_STORAGE_INCREMENT_GB=20
+REMEDIATION_MAX_STORAGE_GB=500
+REMEDIATION_MEMORY_FLAVOR_MAP={"m1.small":"m1.medium","m1.medium":"m1.large"}
+REMEDIATION_VM_RECOVERY_ACTION=hard_reboot
+REMEDIATION_K8S_SAFE_NAMESPACES=default,apps
+```
+
+Pour une demo sure, garder `AUTO_REMEDIATION_DRY_RUN=true`. Pour appliquer
+de vraies actions, passer a `false` apres validation des permissions OpenStack
+et Kubernetes.

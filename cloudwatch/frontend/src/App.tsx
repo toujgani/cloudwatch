@@ -1,17 +1,94 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import VMsPage from './components/VMsPage'
 import PodsPage from './components/PodsPage'
 import AlertsPage from './components/AlertsPage'
 import ReportsPage from './components/ReportsPage'
+import KubernetesPage from './components/KubernetesPage'
+import InfrastructureMapPage from './components/InfrastructureMapPage'
+import LogsPage from './components/LogsPage'
+import GrafanaVisualizationsPage from './components/GrafanaVisualizationsPage'
+import LoginPage from './components/LoginPage'
+import type { AuthUser, UserRole } from './types'
 import './index.css'
 
+const STORAGE_KEY = 'cloudwatch-auth-user'
+
+const homeByRole: Record<UserRole, string> = {
+  admin: '/',
+  operator: '/alerts',
+  viewer: '/',
+}
+
+const routeRoles: Record<string, UserRole[]> = {
+  '/': ['admin', 'viewer'],
+  '/infrastructure': ['admin'],
+  '/vms': ['admin'],
+  '/pods': ['admin'],
+  '/alerts': ['admin', 'operator'],
+  '/logs': ['admin'],
+  '/grafana': ['admin', 'viewer'],
+  '/reports': ['admin', 'viewer'],
+  '/kubernetes': ['admin'],
+}
+
+function readStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as AuthUser
+    if (!parsed.name || !['admin', 'operator', 'viewer'].includes(parsed.role)) return null
+
+    return {
+      ...parsed,
+      baseRole: parsed.baseRole || parsed.role,
+    }
+  } catch {
+    return null
+  }
+}
+
+function ProtectedRoute({ user, path, children }: { user: AuthUser; path: string; children: ReactNode }) {
+  if (!routeRoles[path].includes(user.role)) {
+    return <Navigate to={homeByRole[user.role]} replace />
+  }
+
+  return <>{children}</>
+}
+
 export default function App() {
+  const [user, setUser] = useState<AuthUser | null>(() => readStoredUser())
+
+  const login = (nextUser: AuthUser) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+  }
+
+  const logout = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    setUser(null)
+  }
+
+  const switchRole = (role: UserRole) => {
+    if (!user || user.baseRole !== 'admin') return
+
+    const nextUser: AuthUser = { ...user, role }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+  }
+
+  if (!user) {
+    return <LoginPage onLogin={login} />
+  }
+
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-        <Sidebar />
+        <Sidebar user={user} onLogout={logout} onSwitchRole={switchRole} />
         <main style={{ marginLeft: 220, flex: 1 }}>
           <div style={{
             height: 60,
@@ -31,7 +108,7 @@ export default function App() {
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>CloudWatch</div>
                 <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 400 }}>
-                  Tanger Med Special Agency - Infrastructure
+                  Plateforme de supervision
                 </div>
               </div>
             </div>
@@ -60,11 +137,16 @@ export default function App() {
           </div>
 
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/vms" element={<VMsPage />} />
-            <Route path="/pods" element={<PodsPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/" element={<ProtectedRoute user={user} path="/"><Dashboard /></ProtectedRoute>} />
+            <Route path="/infrastructure" element={<ProtectedRoute user={user} path="/infrastructure"><InfrastructureMapPage /></ProtectedRoute>} />
+            <Route path="/vms" element={<ProtectedRoute user={user} path="/vms"><VMsPage /></ProtectedRoute>} />
+            <Route path="/pods" element={<ProtectedRoute user={user} path="/pods"><PodsPage /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute user={user} path="/alerts"><AlertsPage /></ProtectedRoute>} />
+            <Route path="/logs" element={<ProtectedRoute user={user} path="/logs"><LogsPage /></ProtectedRoute>} />
+            <Route path="/grafana" element={<ProtectedRoute user={user} path="/grafana"><GrafanaVisualizationsPage /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute user={user} path="/reports"><ReportsPage /></ProtectedRoute>} />
+            <Route path="/kubernetes" element={<ProtectedRoute user={user} path="/kubernetes"><KubernetesPage /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to={homeByRole[user.role]} replace />} />
           </Routes>
         </main>
       </div>

@@ -1,3 +1,11 @@
+export type UserRole = 'admin' | 'operator' | 'viewer'
+
+export interface AuthUser {
+  name: string
+  role: UserRole
+  baseRole: UserRole
+}
+
 export interface VM {
   id: string
   name: string
@@ -97,4 +105,103 @@ export interface ReportSummary {
     resolved_alerts: number
     roi_percent: number
   }
+}
+
+export interface KubernetesClusterOverview {
+  cluster: { name: string; provider: string; mode: string; health_score: number }
+  capacity: {
+    nodes: number
+    ready_nodes: number
+    cpu_cores: number
+    memory_gb: number
+    pod_slots: number
+    pods_used: number
+    pod_slot_usage_percent: number
+    avg_cpu_usage_percent: number
+    avg_memory_usage_percent: number
+  }
+  workloads: {
+    pods: number
+    running: number
+    pending: number
+    failed: number
+    namespaces: number
+    restart_total: number
+  }
+  risk: {
+    pressure_nodes: number
+    disk_pressure_nodes: number
+    memory_pressure_nodes: number
+    saturated_nodes: number
+  }
+}
+
+export interface KubernetesNode {
+  name: string
+  role: string
+  status: string
+  kubelet_version: string
+  os_image: string
+  cpu_capacity: number
+  memory_capacity_gb: number
+  pods_capacity: number
+  cpu_usage_percent?: number
+  memory_usage_percent?: number
+  pods_used: number
+  disk_pressure: boolean
+  memory_pressure: boolean
+}
+
+export interface KubernetesNamespace {
+  name: string
+  pods: number
+  running: number
+  failed: number
+  pending: number
+  cpu_millicores: number
+  memory_mb: number
+  restart_total: number
+}
+
+export interface KubernetesMeasurements {
+  period_hours: number
+  rates: { name: string; value: number; unit: string; target: number }[]
+  by_namespace: KubernetesNamespace[]
+}
+
+export interface LogEntry {
+  timestamp: string
+  level: 'info' | 'warning' | 'error' | 'critical' | string
+  service: string
+  location: string
+  message: string
+  context?: string
+  source?: string
+}
+
+export interface LogsResponse {
+  source: string
+  message?: string
+  logs?: LogEntry[]
+  data?: unknown
+}
+
+export interface GrafanaVisualizationPoint {
+  time: string
+  cpu?: number
+  memory?: number
+  disk?: number
+  containers?: number
+  network_in?: number
+  network_out?: number
+}
+
+export interface GrafanaVisualizationResponse {
+  source: string
+  message?: string
+  period_hours: number
+  series: GrafanaVisualizationPoint[]
+  latest: GrafanaVisualizationPoint
+  distribution: { name: string; value: number }[]
+  capacity: { name: string; used: number; free: number }[]
 }

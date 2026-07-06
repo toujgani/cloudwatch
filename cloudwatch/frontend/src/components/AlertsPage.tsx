@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { acknowledgeAlert, exportUrl, getAlerts, remediateAlert, reprocessAlertAgent, resolveAlert } from '../api/client'
+import { acknowledgeAlert, exportUrl, getAlerts, remediateActiveAlerts, remediateAlert, reprocessAlertAgent, resolveAlert } from '../api/client'
 import type { Alert } from '../types'
 
 type Filter = 'active' | 'all' | 'resolved'
@@ -37,6 +37,13 @@ export default function AlertsPage() {
     setAgentBusy(false)
   }
 
+  const runAIOpsAgent = async () => {
+    setAgentBusy(true)
+    await remediateActiveAlerts(operator || 'AI-Agent', false)
+    await load()
+    setAgentBusy(false)
+  }
+
   const counts = {
     critical: alerts.filter(a => a.severity === 'critical' && a.status === 'active').length,
     warning: alerts.filter(a => a.severity === 'warning' && a.status === 'active').length,
@@ -52,6 +59,9 @@ export default function AlertsPage() {
         </div>
         <button className="btn" disabled={agentBusy} onClick={reprocessAgent}>
           {agentBusy ? 'Analyse...' : 'Agent IA'}
+        </button>
+        <button className="btn btn-primary" disabled={agentBusy} onClick={runAIOpsAgent}>
+          AIOps agent
         </button>
         <a className="btn" href={exportUrl('alerts', filter === 'all' ? undefined : filter)}>Exporter CSV</a>
       </div>

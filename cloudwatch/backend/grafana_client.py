@@ -11,7 +11,8 @@ class GrafanaClient:
 
     @property
     def configured(self) -> bool:
-        return bool(self.base_url and settings.GRAFANA_API_TOKEN)
+        token = (settings.GRAFANA_API_TOKEN or "").strip()
+        return bool(self.base_url and token and token not in ("...", "changeme", "change-me"))
 
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}

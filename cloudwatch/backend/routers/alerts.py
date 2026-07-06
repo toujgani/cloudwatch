@@ -94,6 +94,18 @@ def reprocess_active_alerts(db: Session = Depends(get_db)):
     return alerts
 
 
+@router.post("/agent/remediate-active", response_model=list[AlertOut])
+def remediate_active_alerts(payload: RemediationIn, db: Session = Depends(get_db)):
+    """Lance l'agent AIOps sur toutes les alertes actives."""
+    alerts = db.query(Alert).filter(Alert.status == StatusEnum.active).all()
+    for alert in alerts:
+        execute_remediation(db, alert, operator=payload.operator, force=payload.force)
+    db.commit()
+    for alert in alerts:
+        db.refresh(alert)
+    return alerts
+
+
 @router.post("/{alert_id}/agent", response_model=AlertOut)
 def reprocess_alert(alert_id: int, db: Session = Depends(get_db)):
     """Recalcule la decision IA d'une alerte."""

@@ -124,3 +124,35 @@ def get_mock_pods() -> list[dict]:
             "ram_mb":        ram,
         })
     return result
+
+
+def get_mock_cluster_nodes() -> list[dict]:
+    """Inventaire mock de nodes Kubernetes/OpenShift avec taux d'utilisation."""
+    nodes = [
+        ("master-01", "control-plane", "Ready", 4, 8, 110, 31, 54, 18),
+        ("master-02", "control-plane", "Ready", 4, 8, 110, 28, 51, 15),
+        ("master-03", "control-plane", "Ready", 4, 8, 110, 34, 57, 20),
+        ("worker-01", "worker", "Ready", 16, 64, 250, 67, 72, 88),
+        ("worker-02", "worker", "Ready", 16, 64, 250, 61, 69, 82),
+        ("worker-03", "worker", "Ready", 16, 64, 250, 77, 81, 96),
+        ("worker-04", "worker", "Ready", 16, 64, 250, 84, 86, 103),
+        ("worker-05", "worker", "NotReady", 8, 32, 150, 12, 18, 21),
+    ]
+    return [
+        {
+            "name": name,
+            "role": role,
+            "status": status,
+            "kubelet_version": "v1.29.4",
+            "os_image": "Red Hat Enterprise Linux CoreOS",
+            "cpu_capacity": cpu,
+            "memory_capacity_gb": memory,
+            "pods_capacity": pods_capacity,
+            "cpu_usage_percent": cpu_usage,
+            "memory_usage_percent": memory_usage,
+            "pods_used": pods_used,
+            "disk_pressure": name == "worker-04",
+            "memory_pressure": memory_usage >= 85,
+        }
+        for name, role, status, cpu, memory, pods_capacity, cpu_usage, memory_usage, pods_used in nodes
+    ]

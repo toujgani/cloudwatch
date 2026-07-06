@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
 from .collector import start_scheduler, stop_scheduler
-from .routers import vms, pods, alerts, reports, observability
+from .routers import vms, pods, alerts, reports, observability, kubernetes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,6 +52,7 @@ app.include_router(pods.router,   prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(observability.router, prefix="/api")
+app.include_router(kubernetes.router, prefix="/api")
 
 
 @app.get("/api/health")
