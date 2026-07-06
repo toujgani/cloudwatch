@@ -1,4 +1,4 @@
-# CloudWatch — Supervision Infrastructure Cloud
+# CloudWatch: Supervision Infrastructure Cloud
 
 Tableau de bord de supervision OpenStack & OpenShift pour Tanger Med Special Agency.
 
