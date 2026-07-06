@@ -43,7 +43,7 @@ export interface Pod {
 export interface Alert {
   id: number
   severity: 'info' | 'warning' | 'critical'
-  status: 'active' | 'resolved'
+  status: 'active' | 'acknowledged' | 'assigned' | 'resolved'
   title: string
   description?: string
   rule_name?: string
@@ -52,6 +52,8 @@ export interface Alert {
   acknowledged: boolean
   acknowledged_by?: string
   acknowledged_at?: string
+  assigned_to?: string
+  assigned_at?: string
   operator_note?: string
   ai_score?: number
   ai_decision?: 'escalate' | 'investigate' | 'watch' | 'suppress' | string
@@ -60,6 +62,10 @@ export interface Alert {
   ai_recommendation?: string
   ai_confidence?: number
   ai_updated_at?: string
+  anomaly_m?: number
+  anomaly_l?: number
+  anomaly_t?: number
+  anomaly_vector_norm?: number
   remediation_action?: string
   remediation_status?: string
   remediation_message?: string
@@ -204,4 +210,94 @@ export interface GrafanaVisualizationResponse {
   latest: GrafanaVisualizationPoint
   distribution: { name: string; value: number }[]
   capacity: { name: string; used: number; free: number }[]
+}
+
+export interface AuditLogEntry {
+  id: number
+  action: string
+  actor: string
+  resource_type?: string
+  resource_id?: string
+  detail?: string
+  extra?: string
+  created_at: string
+}
+
+export interface AnomalyVectorSim {
+  vector: { m: number; l: number; t: number }
+  norm: number
+  lambda: number
+  health_score: number
+  ai_score: number
+  decision: string
+  formula: string
+  decay_curve: { norm: number; health: number }[]
+}
+
+export interface AIOpsInjectionResult {
+  id: number
+  severity: string
+  status: string
+  title: string
+  ai_score?: number
+  ai_decision?: string
+  ai_category?: string
+  ai_reason?: string
+  ai_recommendation?: string
+  ai_confidence?: number
+  anomaly_m?: number
+  anomaly_l?: number
+  anomaly_t?: number
+  anomaly_vector_norm?: number
+  remediation_action?: string
+  remediation_status?: string
+  remediation_message?: string
+  triggered_at: string
+}
+
+export interface AIOpsKnowledgeEntry {
+  keyword: string
+  log_weight: number
+  trace_weight: number
+  score_bonus: number
+  category: string
+}
+
+export interface AIOPSPipelineStatus {
+  pipeline: string
+  ts: string
+  active_alerts: number
+  ai_scored: number
+  avg_ai_score: number
+  avg_anomaly_norm: number
+  decision_distribution: Record<string, number>
+  remediation_stats: Record<string, number>
+  last_audit_action?: string
+  last_audit_ts?: string
+  lambda_config: Record<string, number>
+}
+
+export interface WsSnapshot {
+  type: 'snapshot'
+  ts: string
+  kpis: {
+    vms: { total: number; active: number }
+    pods: { total: number; running: number; failed: number }
+    alerts: { total_active: number; critical: number }
+    health_score: number
+  }
+  anomaly_aggregate: { m: number; l: number; t: number }
+  top_alerts: {
+    id: number
+    severity: string
+    title: string
+    ai_score?: number
+    ai_decision?: string
+    anomaly_m?: number
+    anomaly_l?: number
+    anomaly_t?: number
+    anomaly_vector_norm?: number
+    remediation_status?: string
+  }[]
+  recent_audit: AuditLogEntry[]
 }

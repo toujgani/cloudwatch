@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { VM, MetricPoint, Pod, Alert, DashboardStats, AlertsSummary, ReportSummary, KubernetesClusterOverview, KubernetesNode, KubernetesNamespace, KubernetesMeasurements, LogsResponse, GrafanaVisualizationResponse } from '../types'
+import type { VM, MetricPoint, Pod, Alert, DashboardStats, AlertsSummary, ReportSummary, KubernetesClusterOverview, KubernetesNode, KubernetesNamespace, KubernetesMeasurements, LogsResponse, GrafanaVisualizationResponse, AuditLogEntry, AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -14,6 +14,8 @@ export const getAlerts          = (status?: string)       => api.get<Alert[]>(`/
 export const getAlertsSummary   = ()                      => api.get<AlertsSummary>('/alerts/summary/stats').then(r => r.data)
 export const acknowledgeAlert   = (id: number, operator = 'operator', note?: string) =>
   api.patch<Alert>(`/alerts/${id}/acknowledge`, { operator, note }).then(r => r.data)
+export const assignAlert        = (id: number, assignee: string, note?: string) =>
+  api.patch<Alert>(`/alerts/${id}/assign`, { assignee, note }).then(r => r.data)
 export const resolveAlert       = (id: number, operator = 'operator', note?: string) =>
   api.patch<Alert>(`/alerts/${id}/resolve`, { operator, note }).then(r => r.data)
 export const reprocessAlertAgent = ()                      => api.post<Alert[]>('/alerts/agent/reprocess').then(r => r.data)
@@ -35,3 +37,16 @@ export const getKubernetesNamespaces = ()                 => api.get<KubernetesN
 export const getKubernetesMeasurements = (hours = 24)     => api.get<KubernetesMeasurements>(`/kubernetes/measurements?hours=${hours}`).then(r => r.data)
 export const exportUrl          = (kind: 'alerts'|'vms'|'pods', status?: string) =>
   `/api/reports/export/${kind}${status ? `?status=${status}` : ''}`
+
+// ── Audit ──
+export const getAuditLogs       = (limit = 100, action?: string, actor?: string) =>
+  api.get<AuditLogEntry[]>(`/audit/?limit=${limit}${action ? `&action=${action}` : ''}${actor ? `&actor=${encodeURIComponent(actor)}` : ''}`).then(r => r.data)
+export const getAuditStats      = ()                      => api.get<Record<string, number>>('/audit/stats').then(r => r.data)
+
+// ── AIOps Simulator ──
+export const simulateVector     = (m: number, l: number, t: number, severity = 'warning') =>
+  api.post<AnomalyVectorSim>('/aiops/simulate/vector', { m, l, t, severity }).then(r => r.data)
+export const injectAnomaly      = (payload: object)       => api.post<AIOpsInjectionResult>('/aiops/simulate/inject', payload).then(r => r.data)
+export const simulateThresholds = (payload: object)       => api.post('/aiops/simulate/thresholds', payload).then(r => r.data)
+export const getAIOpsKnowledgeBase = ()                   => api.get<AIOpsKnowledgeEntry[]>('/aiops/knowledge-base').then(r => r.data)
+export const getAIOpsPipelineStatus = ()                  => api.get<AIOPSPipelineStatus>('/aiops/pipeline/status').then(r => r.data)

@@ -1,25 +1,25 @@
 """
-Moteur d'alertes basé sur des règles à seuils.
-Chaque règle évalue une métrique et crée/résout des alertes en base.
+Alert Engine — rule-based evaluation with AI enrichment and audit trail.
 """
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
-from .models import Alert, VirtualMachine, Pod, SeverityEnum, StatusEnum
+from .models import Alert, VirtualMachine, Pod, SeverityEnum, StatusEnum, AuditActionEnum
 from .config import settings
 from .email_notifications import send_alert_email
 from .ai_agent import apply_decision
 from .remediation_agent import auto_remediate_if_needed
+from . import audit
 
 logger = logging.getLogger(__name__)
 
 
-# ─── Règles ───────────────────────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _find_active(db: Session, rule_name: str, vm_id: str = None, pod_id: str = None) -> Alert | None:
     q = db.query(Alert).filter(
         Alert.rule_name == rule_name,
-        Alert.status    == StatusEnum.active,
+        Alert.status.in_([StatusEnum.active, StatusEnum.acknowledged, StatusEnum.assigned]),
     )
     if vm_id:
         q = q.filter(Alert.vm_id == vm_id)
@@ -31,7 +31,6 @@ def _find_active(db: Session, rule_name: str, vm_id: str = None, pod_id: str = N
 def _create_alert(db: Session, *, severity: SeverityEnum, title: str, description: str,
                   rule_name: str, metric_value: float, threshold: float,
                   vm_id: str = None, pod_id: str = None):
-    # Évite les doublons — si alerte active de même règle existe, on ne recrée pas
     existing = _find_active(db, rule_name, vm_id=vm_id, pod_id=pod_id)
     if existing:
         return
@@ -46,6 +45,20 @@ def _create_alert(db: Session, *, severity: SeverityEnum, title: str, descriptio
     apply_decision(db, alert)
     auto_remediate_if_needed(db, alert)
     db.add(alert)
+
+    # Flush to get the id before writing the audit entry
+    db.flush()
+    audit.log(
+        db,
+        action=AuditActionEnum.alert_created,
+        actor="alert-engine",
+        resource_type="alert",
+        resource_id=str(alert.id),
+        detail=f"{severity.value.upper()}: {title}",
+        extra={"rule": rule_name, "metric_value": metric_value, "threshold": threshold,
+               "vm_id": vm_id, "pod_id": pod_id},
+    )
+
     logger.warning("[ALERT] %s — %s", severity.value.upper(), title)
     send_alert_email(alert)
 
@@ -56,15 +69,22 @@ def _resolve_alert(db: Session, rule_name: str, vm_id: str = None, pod_id: str =
         alert.status = StatusEnum.resolved
         alert.resolved_at = datetime.utcnow()
         apply_decision(db, alert)
+        audit.log(
+            db,
+            action=AuditActionEnum.alert_resolved,
+            actor="alert-engine",
+            resource_type="alert",
+            resource_id=str(alert.id),
+            detail=f"Auto-resolved: {rule_name}",
+        )
         logger.info("[RESOLVED] %s", rule_name)
 
 
-# ─── Évaluation VM ────────────────────────────────────────────────────────────
+# ─── VM evaluation ────────────────────────────────────────────────────────────
 
 def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float | None):
 
-    # ── CPU Critical
-    rule = f"vm.cpu.critical"
+    rule = "vm.cpu.critical"
     if cpu is not None and cpu >= settings.ALERT_CPU_CRITICAL:
         _create_alert(db,
             severity=SeverityEnum.critical,
@@ -76,8 +96,7 @@ def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float |
     else:
         _resolve_alert(db, rule, vm_id=vm.id)
 
-    # ── CPU Warning
-    rule = f"vm.cpu.warning"
+    rule = "vm.cpu.warning"
     if cpu is not None and settings.ALERT_CPU_WARNING <= cpu < settings.ALERT_CPU_CRITICAL:
         _create_alert(db,
             severity=SeverityEnum.warning,
@@ -89,8 +108,7 @@ def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float |
     else:
         _resolve_alert(db, rule, vm_id=vm.id)
 
-    # ── RAM Critical
-    rule = f"vm.ram.critical"
+    rule = "vm.ram.critical"
     if ram is not None and ram >= settings.ALERT_RAM_CRITICAL:
         _create_alert(db,
             severity=SeverityEnum.critical,
@@ -102,8 +120,7 @@ def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float |
     else:
         _resolve_alert(db, rule, vm_id=vm.id)
 
-    # ── RAM Warning
-    rule = f"vm.ram.warning"
+    rule = "vm.ram.warning"
     if ram is not None and settings.ALERT_RAM_WARNING <= ram < settings.ALERT_RAM_CRITICAL:
         _create_alert(db,
             severity=SeverityEnum.warning,
@@ -115,7 +132,6 @@ def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float |
     else:
         _resolve_alert(db, rule, vm_id=vm.id)
 
-    # ── VM Status ERROR
     rule = "vm.status.error"
     if vm.status == "ERROR":
         _create_alert(db,
@@ -129,11 +145,10 @@ def evaluate_vm(db: Session, vm: VirtualMachine, cpu: float | None, ram: float |
         _resolve_alert(db, rule, vm_id=vm.id)
 
 
-# ─── Évaluation Pod ───────────────────────────────────────────────────────────
+# ─── Pod evaluation ───────────────────────────────────────────────────────────
 
 def evaluate_pod(db: Session, pod: Pod, restart_count: int):
 
-    # ── Pod Failed
     rule = "pod.status.failed"
     if pod.status in ("Failed", "Unknown"):
         _create_alert(db,
@@ -146,7 +161,6 @@ def evaluate_pod(db: Session, pod: Pod, restart_count: int):
     else:
         _resolve_alert(db, rule, pod_id=pod.id)
 
-    # ── CrashLoopBackOff (restarts > 5)
     rule = "pod.restarts.high"
     if restart_count >= 5:
         _create_alert(db,

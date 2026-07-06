@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from .config import settings
-from .models import Alert, StatusEnum, VirtualMachine
+from .models import Alert, StatusEnum, VirtualMachine, AuditActionEnum
 from .ai_agent import apply_decision
 from . import openstack_client, openshift_client
+from . import audit as audit_trail
 
 
 @dataclass
@@ -327,6 +328,28 @@ def execute_remediation(db: Session, alert: Alert, operator: str = "AI-Agent", f
         alert.acknowledged_by = operator.strip() or "AI-Agent"
         alert.acknowledged_at = alert.acknowledged_at or datetime.utcnow()
         alert.operator_note = (alert.operator_note or "") + f"\n[{result.status}] {result.message}"
+
+    # Audit trail
+    audit_action = (
+        AuditActionEnum.remediation_applied
+        if result.status in ("applied", "applied_mock", "dry_run")
+        else AuditActionEnum.remediation_blocked
+    )
+    audit_trail.log(
+        db,
+        action=audit_action,
+        actor=operator,
+        resource_type="alert",
+        resource_id=str(alert.id),
+        detail=f"[{result.status}] {result.action}: {result.message[:200]}",
+        extra={
+            "action": result.action,
+            "status": result.status,
+            "risk": plan.risk,
+            "force": force,
+            "ai_score": alert.ai_score,
+        },
+    )
 
     return alert
 

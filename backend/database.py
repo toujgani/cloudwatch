@@ -49,6 +49,13 @@ def _ensure_alert_operation_columns():
         "remediation_status": "VARCHAR",
         "remediation_message": "TEXT",
         "remediation_updated_at": "DATETIME",
+        # Architecture D additions
+        "assigned_to": "VARCHAR",
+        "assigned_at": "DATETIME",
+        "anomaly_m": "FLOAT",
+        "anomaly_l": "FLOAT",
+        "anomaly_t": "FLOAT",
+        "anomaly_vector_norm": "FLOAT",
     }
 
     with engine.begin() as conn:

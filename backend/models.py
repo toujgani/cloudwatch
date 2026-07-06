@@ -15,7 +15,24 @@ class SeverityEnum(str, enum.Enum):
 
 class StatusEnum(str, enum.Enum):
     active = "active"
+    acknowledged = "acknowledged"
+    assigned = "assigned"
     resolved = "resolved"
+
+
+class AuditActionEnum(str, enum.Enum):
+    alert_created = "alert_created"
+    alert_acknowledged = "alert_acknowledged"
+    alert_assigned = "alert_assigned"
+    alert_resolved = "alert_resolved"
+    remediation_triggered = "remediation_triggered"
+    remediation_applied = "remediation_applied"
+    remediation_blocked = "remediation_blocked"
+    ai_analysis = "ai_analysis"
+    collector_error = "collector_error"
+    login = "login"
+    logout = "logout"
+    settings_changed = "settings_changed"
 
 
 # ─── VirtualMachine ───────────────────────────────────────────────────────────
@@ -113,6 +130,16 @@ class Alert(Base):
     remediation_message = Column(Text, nullable=True)
     remediation_updated_at = Column(DateTime, nullable=True)
 
+    # Lifecycle
+    assigned_to  = Column(String, nullable=True)
+    assigned_at  = Column(DateTime, nullable=True)
+
+    # Anomaly vector A = [m, l, t]  (metrics, logs, traces)
+    anomaly_m    = Column(Float, nullable=True)   # metrics component  0-1
+    anomaly_l    = Column(Float, nullable=True)   # logs component     0-1
+    anomaly_t    = Column(Float, nullable=True)   # traces component   0-1
+    anomaly_vector_norm = Column(Float, nullable=True)  # |A|
+
     vm_id        = Column(String, ForeignKey("virtual_machines.id"), nullable=True)
     pod_id       = Column(String, ForeignKey("pods.id"), nullable=True)
 
@@ -121,3 +148,18 @@ class Alert(Base):
 
     vm           = relationship("VirtualMachine", back_populates="alerts")
     pod          = relationship("Pod",            back_populates="alerts")
+
+
+# ─── AuditLog ─────────────────────────────────────────────────────────────────
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    action      = Column(Enum(AuditActionEnum), nullable=False, index=True)
+    actor       = Column(String, nullable=False, default="system")   # who triggered it
+    resource_type = Column(String, nullable=True)                    # "alert" | "vm" | "pod"
+    resource_id = Column(String, nullable=True)                      # the affected resource id
+    detail      = Column(Text, nullable=True)                        # human-readable detail
+    extra       = Column(Text, nullable=True)                        # JSON blob for extra data
+    created_at  = Column(DateTime, default=datetime.utcnow, index=True)

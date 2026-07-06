@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
@@ -12,7 +12,9 @@ import InfrastructureMapPage from './components/InfrastructureMapPage'
 import LogsPage from './components/LogsPage'
 import GrafanaVisualizationsPage from './components/GrafanaVisualizationsPage'
 import LoginPage from './components/LoginPage'
-import type { AuthUser, UserRole } from './types'
+import AIOpsPage from './components/AIOpsPage'
+import AuditLogPage from './components/AuditLogPage'
+import type { AuthUser, UserRole, WsSnapshot } from './types'
 import './index.css'
 
 const STORAGE_KEY = 'cloudwatch-auth-user'
@@ -33,6 +35,8 @@ const routeRoles: Record<string, UserRole[]> = {
   '/grafana': ['admin', 'viewer'],
   '/reports': ['admin', 'viewer'],
   '/kubernetes': ['admin'],
+  '/aiops': ['admin'],
+  '/audit': ['admin'],
 }
 
 function readStoredUser(): AuthUser | null {
@@ -62,6 +66,22 @@ function ProtectedRoute({ user, path, children }: { user: AuthUser; path: string
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser())
+  const [wsSnapshot, setWsSnapshot] = useState<WsSnapshot | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    const connect = () => {
+      const ws = new WebSocket(`ws://localhost:8000/ws/live`)
+      wsRef.current = ws
+      ws.onmessage = (e) => {
+        try { setWsSnapshot(JSON.parse(e.data) as WsSnapshot) } catch {}
+      }
+      ws.onclose = () => setTimeout(connect, 3000)
+    }
+    connect()
+    return () => { wsRef.current?.close() }
+  }, [!!user])
 
   const login = (nextUser: AuthUser) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
@@ -134,6 +154,21 @@ export default function App() {
               }} />
               LIVE
             </div>
+            {wsSnapshot && (
+              <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text2)' }}>
+                <span>VMs: <strong style={{ color: 'var(--blue2)' }}>{wsSnapshot.kpis.vms.active}/{wsSnapshot.kpis.vms.total}</strong></span>
+                <span>Pods: <strong style={{ color: 'var(--teal2)' }}>{wsSnapshot.kpis.pods.running}/{wsSnapshot.kpis.pods.total}</strong></span>
+                <span>Alertes: <strong style={{ color: 'var(--red)' }}>{wsSnapshot.kpis.alerts.total_active}</strong></span>
+                <span style={{
+                  padding: '2px 10px', borderRadius: 12,
+                  background: wsSnapshot.kpis.health_score >= 70 ? 'rgba(26,188,156,0.12)' : wsSnapshot.kpis.health_score >= 45 ? 'rgba(255,209,102,0.15)' : 'rgba(255,77,109,0.12)',
+                  color: wsSnapshot.kpis.health_score >= 70 ? 'var(--green)' : wsSnapshot.kpis.health_score >= 45 ? 'var(--yellow)' : 'var(--red)',
+                  fontWeight: 700,
+                }}>
+                  ⚡ {wsSnapshot.kpis.health_score}/100
+                </span>
+              </div>
+            )}
           </div>
 
           <Routes>
@@ -146,6 +181,8 @@ export default function App() {
             <Route path="/grafana" element={<ProtectedRoute user={user} path="/grafana"><GrafanaVisualizationsPage /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} path="/reports"><ReportsPage /></ProtectedRoute>} />
             <Route path="/kubernetes" element={<ProtectedRoute user={user} path="/kubernetes"><KubernetesPage /></ProtectedRoute>} />
+            <Route path="/aiops" element={<ProtectedRoute user={user} path="/aiops"><AIOpsPage /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute user={user} path="/audit"><AuditLogPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to={homeByRole[user.role]} replace />} />
           </Routes>
         </main>
