@@ -3,6 +3,7 @@
 <div align="center">
   <img src="frontend/public/cireslogo.png" alt="CIRES Technologies Logo" width="50" />
 
+  **Towards an AI-Augmented Cloud Monitoring Overview Platform**
   
   [![Internship](https://img.shields.io/badge/Project-Internship_Study-blue.svg)]()
   [![Company](https://img.shields.io/badge/Company-CIRES_Technologies-red.svg)]()
