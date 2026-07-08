@@ -1,7 +1,7 @@
 # ☁️ Cloud AI Monitor: Architecture Benchmark
 
 <div align="center">
-  <img src="frontend/public/cireslogo.png" alt="CIRES Technologies Logo" width="200" />
+  <img src="frontend/public/cireslogo.png" alt="CIRES Technologies Logo" width="100" />
 
   **Towards an AI-Augmented Cloud Monitoring Overview Platform**
   
