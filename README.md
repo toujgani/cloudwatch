@@ -1,12 +1,12 @@
 # ☁️ Cloud AI Monitor: Architecture Benchmark
 
 <div align="center">
-  <img src="frontend/public/cireslogo.png" alt="CIRES Technologies Logo" width="100" />
+  <img src="frontend/public/cireslogo.png" alt="CIRES Technologies Logo" width="50" />
 
   **Towards an AI-Augmented Cloud Monitoring Overview Platform**
   
   [![Internship](https://img.shields.io/badge/Project-Internship_Study-blue.svg)]()
-  [![Company](https://img.shields.io/badge/Company-CIRES_Technologies-gray.svg)]()
+  [![Company](https://img.shields.io/badge/Company-CIRES_Technologies-red.svg)]()
   [![Date](https://img.shields.io/badge/Date-July_2026-success.svg)]()
 </div>
 
