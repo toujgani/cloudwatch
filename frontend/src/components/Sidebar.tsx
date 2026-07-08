@@ -60,7 +60,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <nav style={{ padding: '12px 0', flex: 1 }}>
+      <nav style={{ padding: '12px 0', flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '8px 16px 4px', fontSize: 10, color: 'var(--text3)', letterSpacing: '1.2px', textTransform: 'uppercase' }}>
           Navigation
         </div>
