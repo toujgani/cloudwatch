@@ -1,23 +1,32 @@
+/* ═══════════════════════════════════════════════════════════════════
+   CIRES Technologies — White Mode + Orange Accent
+   Primary:  #ffffff (white surfaces)
+   Accent:   #f5a623 (CIRES signature orange)
+   Secondary:#e67e22 (deeper orange)
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg:      #f5f7fb;
+  --bg:      #f7f8fa;
   --bg2:     #ffffff;
-  --bg3:     #eef3f8;
+  --bg3:     #f1f3f6;
   --card:    #ffffff;
-  --card2:   #f8fafc;
-  --border:  #e3e8ef;
-  --border2: #cbd5e1;
-  --text:    #172033;
-  --text2:   #526070;
-  --text3:   #7b8794;
-  --blue:    #1457d9;
-  --blue2:   #2563eb;
-  --teal:    #089981;
-  --teal2:   #0f766e;
-  --orange:  #ea7a23;
-  --red:     #dc2626;
-  --yellow:  #b7791f;
-  --green:   #15803d;
+  --card2:   #fafbfc;
+  --border:  #e8ecf0;
+  --border2: #d4dae0;
+  --text:    #1a2030;
+  --text2:   #4a5568;
+  --text3:   #8a94a6;
+  --blue:    #f5a623;
+  --blue2:   #f5a623;
+  --teal:    #0ea5a0;
+  --teal2:   #0d9488;
+  --orange:  #f5a623;
+  --red:     #dc3545;
+  --yellow:  #f5a623;
+  --green:   #22a855;
   --purple:  #7c3aed;
+  --accent:  #f5a623;
+  --accent2: #e67e22;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,23 +39,26 @@ body {
   min-height: 100vh;
 }
 
-body::before {
-  content: none;
-}
+body::before { content: none; }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #edf2f7; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #d4dae0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
+/* ── Badges ───────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
 }
 .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-.badge-running  { background: #dcfce7;  color: var(--green);  }
+
+.badge-running  { background: #dcfce7; color: var(--green); }
 .badge-running::before  { background: var(--green); }
-.badge-warning  { background: #fef3c7; color: var(--yellow); }
-.badge-warning::before  { background: var(--yellow); }
+.badge-active   { background: #dcfce7; color: var(--green); }
+.badge-active::before   { background: var(--green); }
+.badge-warning  { background: #fef3c7; color: #b7791f; }
+.badge-warning::before  { background: #b7791f; }
 .badge-critical, .badge-error, .badge-failed {
   background: #fee2e2; color: var(--red);
 }
@@ -54,33 +66,37 @@ body::before {
   background: var(--red);
 }
 .badge-stopped, .badge-shutoff, .badge-pending {
-  background: #e2e8f0; color: var(--text2);
+  background: #f1f5f9; color: var(--text3);
 }
 .badge-stopped::before, .badge-shutoff::before, .badge-pending::before {
   background: var(--text3);
 }
-.badge-info { background: #dbeafe; color: var(--blue2); }
-.badge-info::before { background: var(--blue2); }
+.badge-info { background: #fff7ed; color: var(--accent); }
+.badge-info::before { background: var(--accent); }
 
+/* ── Progress bars ────────────────────────────────────────────────── */
 .progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
 .fill-ok   { background: var(--teal); }
-.fill-warn { background: var(--yellow); }
-.fill-crit { background: var(--red); box-shadow: 0 0 6px rgba(255,77,109,0.5); }
+.fill-warn { background: var(--accent); }
+.fill-crit { background: var(--red); box-shadow: 0 0 6px rgba(220,53,69,0.4); }
 
+/* ── Animations ───────────────────────────────────────────────────── */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+  50%       { opacity: 0.4; }
 }
 .pulse { animation: pulse 2s infinite; }
 
+/* ── Panels / Cards ───────────────────────────────────────────────── */
 .panel {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
 }
 
+/* ── Buttons ──────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -95,21 +111,53 @@ body::before {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.btn:hover { border-color: var(--blue2); color: var(--blue2); background: #eff6ff; }
-.btn:disabled { opacity: 0.55; cursor: wait; }
-.btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #fff7ed;
+}
+.btn:disabled { opacity: 0.5; cursor: wait; }
 
+.btn-primary {
+  background: linear-gradient(135deg, #f5a623, #e67e22);
+  border-color: #e67e22;
+  color: #fff;
+  font-weight: 700;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  border-color: #d35400;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(245,166,35,0.3);
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────── */
 .input {
   min-height: 30px;
   padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border);
   background: #fff;
   color: var(--text);
   font-size: 12px;
   outline: none;
+  transition: border-color 0.2s;
 }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(245,166,35,0.1); }
 
-.input:focus { border-color: var(--blue2); }
+select.input { background: #fff; color: var(--text); }
+
+/* ── Table hover ──────────────────────────────────────────────────── */
+table tbody tr:hover { background: #fff7ed; }
+
+/* ── Recharts tooltip ─────────────────────────────────────────────── */
+.recharts-default-tooltip {
+  background: #fff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  color: var(--text) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+}

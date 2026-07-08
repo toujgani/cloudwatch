@@ -126,9 +126,9 @@ export default function App() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/cireslogo.png" alt="CIRES" style={{ width: 34, height: 34, objectFit: 'contain' }} />
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>CloudWatch</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Cloud AI Monitor</div>
                 <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 400 }}>
-                  Plateforme de supervision
+                  CIRES Technologies
                 </div>
               </div>
             </div>
@@ -140,15 +140,15 @@ export default function App() {
               borderRadius: 20,
               fontSize: 12,
               fontWeight: 700,
-              background: '#dcfce7',
-              color: 'var(--green)',
-              border: '1px solid #bbf7d0',
+              background: '#fff7ed',
+              color: '#e67e22',
+              border: '1px solid #fed7aa',
             }}>
               <span style={{
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: 'var(--green)',
+                background: '#f5a623',
                 display: 'inline-block',
                 animation: 'pulse 1.2s infinite',
               }} />

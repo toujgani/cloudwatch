@@ -49,14 +49,13 @@ export default function Sidebar({
               height: 42,
               objectFit: 'contain',
               borderRadius: 8,
-              background: '#fff',
               border: '1px solid var(--border)',
               padding: 4,
             }}
           />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>CloudWatch</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)' }}>CIRES Monitoring</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Cloud AI Monitor</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>CIRES Technologies</div>
           </div>
         </div>
       </div>
@@ -70,9 +69,9 @@ export default function Sidebar({
             style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px', fontSize: 13, textDecoration: 'none',
-              color: isActive ? 'var(--blue2)' : 'var(--text2)',
-              background: isActive ? '#eff6ff' : 'transparent',
-              borderLeft: isActive ? '3px solid var(--blue2)' : '3px solid transparent',
+              color: isActive ? '#e67e22' : 'var(--text2)',
+              background: isActive ? '#fff7ed' : 'transparent',
+              borderLeft: isActive ? '3px solid #f5a623' : '3px solid transparent',
               transition: 'all 0.2s',
             })}
           >
@@ -118,8 +117,8 @@ export default function Sidebar({
         </button>
         <div>
           <span style={{
-            width: 7, height: 7, borderRadius: '50%', background: 'var(--green)',
-            boxShadow: '0 0 6px var(--green)', display: 'inline-block', marginRight: 6,
+            width: 7, height: 7, borderRadius: '50%', background: '#f5a623',
+            boxShadow: '0 0 6px rgba(245,166,35,0.5)', display: 'inline-block', marginRight: 6,
           }} className="pulse" />
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Collecte active - 30s</span>
         </div>
