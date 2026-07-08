@@ -47,8 +47,10 @@ class Settings(BaseSettings):
     ALERT_EMAIL_TO: str = ""
     SMTP_USE_TLS: bool = True
 
-    # Mock mode — test sans OpenStack/OpenShift
-    MOCK_MODE: bool = False
+    # Mock mode — split per source
+    MOCK_MODE: bool = False              # legacy fallback
+    MOCK_OPENSTACK: bool = True          # VMs: mocked (no real OpenStack)
+    MOCK_OPENSHIFT: bool = False         # Pods: real OpenShift sandbox
 
     # Grafana API
     GRAFANA_URL: str = "http://localhost:3000"

@@ -183,7 +183,13 @@ def _format_plan(plan: RemediationPlan) -> str:
 
 def _run_real_action(db: Session, plan: RemediationPlan, alert: Alert, operator: str) -> RemediationResult:
     action = plan.action
-    if settings.MOCK_MODE:
+    # Check if the relevant source is mocked
+    is_mocked = (
+        (alert.vm_id and (settings.MOCK_OPENSTACK or settings.MOCK_MODE)) or
+        (alert.pod_id and (settings.MOCK_OPENSHIFT or settings.MOCK_MODE)) or
+        settings.MOCK_MODE
+    )
+    if is_mocked:
         return RemediationResult(
             action=action,
             status="applied_mock",

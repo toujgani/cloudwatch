@@ -26,10 +26,10 @@ scheduler = BackgroundScheduler()
 # ─── OpenStack Collect ────────────────────────────────────────────────────────
 
 def collect_openstack(db: Session):
-    logger.info("[Collector] OpenStack — start (mock=%s)", settings.MOCK_MODE)
+    logger.info("[Collector] OpenStack — start (mock=%s)", settings.MOCK_OPENSTACK or settings.MOCK_MODE)
 
     # ── Mode mock ──
-    if settings.MOCK_MODE:
+    if settings.MOCK_OPENSTACK or settings.MOCK_MODE:
         vms_data = mock_data.get_mock_vms()
         for data in vms_data:
             vm = db.get(VirtualMachine, data["id"])
@@ -101,10 +101,10 @@ def collect_openstack(db: Session):
 # ─── OpenShift Collect ────────────────────────────────────────────────────────
 
 def collect_openshift(db: Session):
-    logger.info("[Collector] OpenShift — start (mock=%s)", settings.MOCK_MODE)
+    logger.info("[Collector] OpenShift — start (mock=%s)", settings.MOCK_OPENSHIFT or settings.MOCK_MODE)
 
     # ── Mode mock ──
-    if settings.MOCK_MODE:
+    if settings.MOCK_OPENSHIFT or settings.MOCK_MODE:
         pods_data = mock_data.get_mock_pods()
         for data in pods_data:
             pod = db.get(Pod, data["id"])
