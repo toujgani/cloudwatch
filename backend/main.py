@@ -17,7 +17,9 @@ from .collector import start_scheduler, stop_scheduler
 from .routers import vms, pods, alerts, reports, observability, kubernetes
 from .routers import audit as audit_router
 from .routers import aiops as aiops_router
+from .routers import auth as auth_router
 from .websocket_manager import manager, broadcast_loop
+from .seed import seed_users
 
 # ── Production Logging ────────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -46,6 +48,12 @@ async def lifespan(app: FastAPI):
     signal.signal(signal.SIGINT, _signal_handler)
 
     init_db()
+    # Seed default users on first boot
+    db = SessionLocal()
+    try:
+        seed_users(db)
+    finally:
+        db.close()
     start_scheduler()
     # Start WebSocket broadcast loop as background task
     broadcast_task = asyncio.create_task(broadcast_loop(SessionLocal))
@@ -106,6 +114,7 @@ _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _has_static = _STATIC_DIR.is_dir() and (_STATIC_DIR / "index.html").exists()
 
 # ── REST Routers ──
+app.include_router(auth_router.router,   prefix="/api")
 app.include_router(vms.router,           prefix="/api")
 app.include_router(pods.router,          prefix="/api")
 app.include_router(alerts.router,        prefix="/api")

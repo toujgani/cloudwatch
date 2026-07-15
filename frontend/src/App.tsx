@@ -14,6 +14,7 @@ import GrafanaVisualizationsPage from './components/GrafanaVisualizationsPage'
 import LoginPage from './components/LoginPage'
 import AIOpsPage from './components/AIOpsPage'
 import AuditLogPage from './components/AuditLogPage'
+import { clearStoredToken } from './api/client'
 import type { AuthUser, UserRole, WsSnapshot } from './types'
 import './index.css'
 
@@ -91,6 +92,7 @@ export default function App() {
   }
 
   const logout = () => {
+    clearStoredToken()
     localStorage.removeItem(STORAGE_KEY)
     setUser(null)
   }

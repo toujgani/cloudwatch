@@ -84,14 +84,6 @@ docker compose up --build
 # Open: http://localhost:8080
 ```
 
-### Login Credentials (Demo)
-
-| User | Password | Role |
-|------|----------|------|
-| admin | Admin@123 | Full access |
-| operator | Operator@123 | Alert management |
-| viewer | Viewer@123 | Read-only |
-
 ---
 
 ## 📁 Project Structure

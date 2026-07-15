@@ -1,34 +1,42 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { AuthUser, UserRole } from '../types'
-
-const accounts: Record<string, { password: string; role: UserRole }> = {
-  admin: { password: 'Admin@123', role: 'admin' },
-  operator: { password: 'Operator@123', role: 'operator' },
-  viewer: { password: 'Viewer@123', role: 'viewer' },
-}
-
-function authenticate(name: string, password: string): AuthUser | null {
-  const account = accounts[name.toLowerCase()]
-  if (!account || account.password !== password) return null
-  return { name, role: account.role, baseRole: account.role }
-}
+import type { AuthUser } from '../types'
+import { login as apiLogin, setStoredToken } from '../api/client'
 
 export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmedName = name.trim()
     if (!trimmedName || !password.trim()) {
       setError('Veuillez renseigner votre utilisateur et votre mot de passe.')
       return
     }
-    const user = authenticate(trimmedName, password)
-    if (!user) { setError('Utilisateur ou mot de passe incorrect.'); return }
-    onLogin(user)
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await apiLogin(trimmedName, password)
+      // Store JWT token
+      setStoredToken(response.access_token)
+      // Build user object
+      const user: AuthUser = {
+        name: response.user.name,
+        role: response.user.role as AuthUser['role'],
+        baseRole: response.user.baseRole as AuthUser['role'],
+      }
+      onLogin(user)
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      setError(detail || 'Erreur de connexion. Vérifiez vos identifiants.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -85,7 +93,8 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
             value={name}
             onChange={e => { setName(e.target.value); setError('') }}
             autoComplete="username"
-            placeholder="admin / operator / viewer"
+            placeholder="Nom d'utilisateur"
+            disabled={loading}
             style={{
               width: '100%', minHeight: 44, fontSize: 14, marginBottom: 18,
               borderRadius: 8, background: '#f7f8fa', borderColor: '#e8ecf0',
@@ -102,6 +111,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
             onChange={e => { setPassword(e.target.value); setError('') }}
             autoComplete="current-password"
             placeholder="••••••••"
+            disabled={loading}
             style={{
               width: '100%', minHeight: 44, fontSize: 14, marginBottom: 18,
               borderRadius: 8, background: '#f7f8fa', borderColor: '#e8ecf0',
@@ -123,12 +133,14 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
           <button
             className="btn btn-primary"
             type="submit"
+            disabled={loading}
             style={{
               width: '100%', minHeight: 46, fontSize: 14, borderRadius: 8,
               boxShadow: '0 6px 20px rgba(245,166,35,0.25)',
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            Se connecter
+            {loading ? 'Connexion...' : 'Se connecter'}
           </button>
 
           <div style={{

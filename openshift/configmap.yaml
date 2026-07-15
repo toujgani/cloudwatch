@@ -63,3 +63,8 @@ data:
   REMEDIATION_MEMORY_FLAVOR_MAP: "{}"
   REMEDIATION_VM_RECOVERY_ACTION: "hard_reboot"
   REMEDIATION_K8S_SAFE_NAMESPACES: "red1intheocean-dev"
+
+  # Seed passwords (only used on first boot when DB is empty)
+  SEED_PASSWORD_ADMIN: "Admin@CloudAI2026"
+  SEED_PASSWORD_OPERATOR: "Operator@CloudAI2026"
+  SEED_PASSWORD_VIEWER: "Viewer@CloudAI2026"
