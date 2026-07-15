@@ -1,13 +1,10 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
-python-dotenv
-apscheduler
-requests
-kubernetes
-python-jose[cryptography]
-passlib[bcrypt]
-python-multipart
-pydantic
-pydantic-settings
+# Cloud AI Monitor — Production Dependencies (pinned)
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+python-dotenv==1.0.1
+apscheduler==3.10.4
+requests==2.32.3
+pydantic==2.9.2
+pydantic-settings==2.5.2

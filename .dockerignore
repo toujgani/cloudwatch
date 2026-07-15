@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Node
+frontend/node_modules/
+frontend/.vite/
+
+# Environment and secrets
+.env
+backend/.env
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.dockerignore
+docker-compose.yaml
+
+# OpenShift manifests (not needed inside image)
+openshift/
+
+# GitHub Actions
+.github/
+
+# Documentation
+docs/
+*.md
+*.pdf
+
+# OS
+Thumbs.db
+.DS_Store

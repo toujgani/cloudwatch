@@ -72,7 +72,9 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     const connect = () => {
-      const ws = new WebSocket(`ws://localhost:8000/ws/live`)
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${proto}//${window.location.host}/ws/live`
+      const ws = new WebSocket(wsUrl)
       wsRef.current = ws
       ws.onmessage = (e) => {
         try { setWsSnapshot(JSON.parse(e.data) as WsSnapshot) } catch {}

@@ -1,0 +1,2 @@
+# Root requirements for OpenShift S2I — includes backend deps + uvicorn
+-r backend/requirements.txt

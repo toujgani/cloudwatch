@@ -1,0 +1,9 @@
+# Cloud AI Monitor — OpenShift Namespace Reference
+# The Developer Sandbox already provides: red1intheocean-dev
+# This file is for documentation only
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: red1intheocean-dev
+  labels:
+    app.kubernetes.io/part-of: cloud-ai-monitor

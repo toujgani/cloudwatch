@@ -1,0 +1,110 @@
+# Cloud AI Monitor — Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-ai-monitor
+  namespace: red1intheocean-dev
+  labels:
+    app.kubernetes.io/name: cloud-ai-monitor
+    app.kubernetes.io/component: application
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: cloud-ai-monitor
+  template:
+    metadata:
+      labels:
+        app: cloud-ai-monitor
+        app.kubernetes.io/name: cloud-ai-monitor
+        app.kubernetes.io/component: application
+    spec:
+      containers:
+        - name: cloud-ai-monitor
+          image: ghcr.io/red1intheocean/cloud-ai-monitor:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: cloudwatch-config
+            - secretRef:
+                name: cloudwatch-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          # Startup probe: gives the app up to 60s to start
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+          # Liveness probe: restarts if unhealthy
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness probe: removes from load balancer if not ready
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-ai-monitor
+  namespace: red1intheocean-dev
+  labels:
+    app.kubernetes.io/name: cloud-ai-monitor
+    app.kubernetes.io/component: application
+spec:
+  selector:
+    app: cloud-ai-monitor
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cloud-ai-monitor
+  namespace: red1intheocean-dev
+  labels:
+    app.kubernetes.io/name: cloud-ai-monitor
+    app.kubernetes.io/component: application
+spec:
+  to:
+    kind: Service
+    name: cloud-ai-monitor
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

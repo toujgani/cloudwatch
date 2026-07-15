@@ -1,8 +1,19 @@
+import logging
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from .config import settings
 
-engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+logger = logging.getLogger(__name__)
+
+# Production-grade connection pool settings
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,  # Recycle connections every 30 minutes
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

@@ -77,5 +77,9 @@ class Settings(BaseSettings):
     REMEDIATION_VM_RECOVERY_ACTION: str = "hard_reboot"  # hard_reboot | stop | live_migrate
     REMEDIATION_K8S_SAFE_NAMESPACES: str = "default"
 
+    # Production settings
+    LOG_LEVEL: str = "INFO"
+    CORS_ORIGINS: str = ""
+
 
 settings = Settings()

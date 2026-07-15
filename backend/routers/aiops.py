@@ -333,3 +333,35 @@ def pipeline_status(db: Session = Depends(get_db)):
         "last_audit_ts": last_audit.created_at.isoformat() if last_audit else None,
         "lambda_config": _LAMBDA,
     }
+
+
+@router.get("/predictions")
+def get_predictions(hours: int = 2, db: Session = Depends(get_db)):
+    """
+    Data science predictions — linear regression on pod metrics.
+    Returns time-to-saturation estimates for CPU, RAM, and restarts.
+    """
+    from ..predictions import predict_all_pods
+    return {
+        "analysis_window_hours": hours,
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "predictions": predict_all_pods(db, hours),
+    }
+
+
+@router.get("/predictions/{pod_id:path}")
+def get_pod_prediction(pod_id: str, metric: str = "cpu", hours: int = 2, db: Session = Depends(get_db)):
+    """Prediction for a specific pod + metric."""
+    from ..predictions import predict_pod_metric
+    pred = predict_pod_metric(db, pod_id, metric, hours)
+    return {
+        "resource_id": pred.resource_id,
+        "metric": pred.metric,
+        "current_value": pred.current_value,
+        "trend": pred.trend,
+        "slope_per_hour": pred.slope_per_hour,
+        "predicted_saturation_hours": pred.predicted_saturation,
+        "confidence": pred.confidence,
+        "data_points": pred.data_points,
+        "message": pred.message,
+    }

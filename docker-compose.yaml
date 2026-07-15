@@ -1,0 +1,53 @@
+# Cloud AI Monitor — Local Development Stack
+# Usage: docker compose up --build
+version: "3.9"
+
+services:
+  # ── PostgreSQL Database ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloudwatch-db
+    environment:
+      POSTGRES_DB: cloudwatch
+      POSTGRES_USER: cloudwatch
+      POSTGRES_PASSWORD: localdev123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudwatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Cloud AI Monitor Application ────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cloudwatch-app
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://cloudwatch:localdev123@postgres:5432/cloudwatch
+      COLLECT_INTERVAL_SECONDS: "30"
+      MOCK_MODE: "false"
+      MOCK_OPENSTACK: "false"
+      MOCK_OPENSHIFT: "false"
+      AUTO_REMEDIATION_ENABLED: "true"
+      AUTO_REMEDIATION_DRY_RUN: "true"
+      SECRET_KEY: "local-dev-secret-change-in-production"
+      KUBE_API_URL: ""
+      KUBE_TOKEN: ""
+      KUBE_NAMESPACE: ""
+      OS_AUTH_URL: ""
+      OS_USERNAME: ""
+      OS_PASSWORD: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

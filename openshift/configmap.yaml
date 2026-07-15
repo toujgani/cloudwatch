@@ -1,0 +1,65 @@
+# Cloud AI Monitor — ConfigMap (non-sensitive configuration)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudwatch-config
+  namespace: red1intheocean-dev
+  labels:
+    app.kubernetes.io/name: cloud-ai-monitor
+    app.kubernetes.io/component: config
+data:
+  # OpenStack
+  OS_AUTH_URL: "http://your-openstack:5000/v3"
+  OS_USERNAME: "admin"
+  OS_PROJECT_NAME: "admin"
+  OS_USER_DOMAIN_NAME: "Default"
+  OS_PROJECT_DOMAIN_NAME: "Default"
+
+  # OpenShift / Kubernetes
+  KUBE_API_URL: "https://kubernetes.default.svc"
+  KUBE_VERIFY_SSL: "false"
+  KUBE_NAMESPACE: "red1intheocean-dev"
+
+  # Collector
+  COLLECT_INTERVAL_SECONDS: "60"
+  MOCK_MODE: "false"
+  MOCK_OPENSTACK: "false"
+  MOCK_OPENSHIFT: "false"
+
+  # Alert thresholds
+  ALERT_CPU_WARNING: "70"
+  ALERT_CPU_CRITICAL: "90"
+  ALERT_RAM_WARNING: "75"
+  ALERT_RAM_CRITICAL: "90"
+
+  # Email (disabled by default)
+  EMAIL_ALERTS_ENABLED: "false"
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_USERNAME: ""
+  SMTP_FROM: "cloudwatch@localhost"
+  ALERT_EMAIL_TO: ""
+  SMTP_USE_TLS: "true"
+
+  # Grafana
+  GRAFANA_URL: "http://localhost:3000"
+  GRAFANA_METRICS_DATASOURCE_UID: ""
+  GRAFANA_LOGS_DATASOURCE_UID: ""
+  GRAFANA_TRACES_DATASOURCE_UID: ""
+  GRAFANA_VERIFY_SSL: "true"
+
+  # Financial
+  FINANCE_MONTHLY_INFRA_COST: "10000"
+  FINANCE_AUTOMATION_SAVINGS_RATE: "0.12"
+
+  # AI Remediation
+  AUTO_REMEDIATION_ENABLED: "true"
+  AUTO_REMEDIATION_DRY_RUN: "true"
+  AUTO_REMEDIATION_MIN_SCORE: "55"
+  REMEDIATION_STORAGE_INCREMENT_GB: "20"
+  REMEDIATION_MEMORY_SCALE_PERCENT: "25"
+  REMEDIATION_MAX_ACTIONS_PER_HOUR: "5"
+  REMEDIATION_MAX_STORAGE_GB: "500"
+  REMEDIATION_MEMORY_FLAVOR_MAP: "{}"
+  REMEDIATION_VM_RECOVERY_ACTION: "hard_reboot"
+  REMEDIATION_K8S_SAFE_NAMESPACES: "red1intheocean-dev"

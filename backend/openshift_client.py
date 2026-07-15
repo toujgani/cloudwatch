@@ -1,8 +1,11 @@
 """
 Client OpenShift — Kubernetes REST API avec Bearer token.
 Lit pods, statuts, restarts et métriques via l'API metrics.k8s.io.
+Supports both external token (from .env) and auto-mounted service account token.
 """
 import logging
+import os
+from pathlib import Path
 import requests
 import urllib3
 from .config import settings
@@ -10,19 +13,49 @@ from .config import settings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger(__name__)
 
+# Service account token path (auto-mounted inside OpenShift pods)
+_SA_TOKEN_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+_SA_CA_PATH = Path("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+
+
+def _get_token() -> str:
+    """Get bearer token: prefer env var, fallback to mounted service account."""
+    if settings.KUBE_TOKEN:
+        return settings.KUBE_TOKEN
+    if _SA_TOKEN_PATH.exists():
+        return _SA_TOKEN_PATH.read_text().strip()
+    return ""
+
+
+def _get_api_url() -> str:
+    """Get API URL: prefer env var, fallback to in-cluster default."""
+    if settings.KUBE_API_URL:
+        return settings.KUBE_API_URL
+    # In-cluster detection
+    host = os.getenv("KUBERNETES_SERVICE_HOST", "")
+    port = os.getenv("KUBERNETES_SERVICE_PORT", "443")
+    if host:
+        return f"https://{host}:{port}"
+    return "https://kubernetes.default.svc"
+
 
 def _session() -> requests.Session:
     s = requests.Session()
-    s.headers.update({
-        "Authorization": f"Bearer {settings.KUBE_TOKEN}",
-        "Accept": "application/json",
-    })
+    token = _get_token()
+    if token:
+        s.headers.update({
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        })
     s.verify = settings.KUBE_VERIFY_SSL
+    # If using in-cluster CA
+    if not settings.KUBE_VERIFY_SSL and _SA_CA_PATH.exists():
+        s.verify = str(_SA_CA_PATH)
     return s
 
 
 def _url(path: str) -> str:
-    return f"{settings.KUBE_API_URL}{path}"
+    return f"{_get_api_url()}{path}"
 
 
 # ─── Pods ─────────────────────────────────────────────────────────────────────

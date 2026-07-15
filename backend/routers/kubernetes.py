@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Query
-from ..config import settings
-from .. import mock_data
 from .. import openshift_client as k8s_client
 
 router = APIRouter(prefix="/kubernetes", tags=["Kubernetes"])
@@ -26,10 +24,6 @@ def _parse_memory_gb(value) -> float:
     if raw.endswith("Gi"):
         return round(float(raw[:-2]), 2)
     return round(float(raw) / 1024 / 1024 / 1024, 2)
-
-
-def _mock_nodes():
-    return mock_data.get_mock_cluster_nodes()
 
 
 def _real_nodes():
@@ -67,19 +61,13 @@ def _real_nodes():
 
 
 def _pods():
-    if settings.MOCK_MODE:
-        return mock_data.get_mock_pods()
     metrics = k8s_client.list_pod_metrics()
     return [k8s_client.parse_pod(item, metrics) for item in k8s_client.list_pods()]
 
 
-def _nodes():
-    return _mock_nodes() if settings.MOCK_MODE else _real_nodes()
-
-
 @router.get("/cluster")
 def cluster_overview():
-    nodes = _nodes()
+    nodes = _real_nodes()
     pods = _pods()
     namespaces = sorted({p["namespace"] for p in pods})
     total_cpu = sum(float(n["cpu_capacity"]) for n in nodes)
@@ -107,9 +95,9 @@ def cluster_overview():
 
     return {
         "cluster": {
-            "name": "openshift-main" if not settings.MOCK_MODE else "mock-openshift-main",
+            "name": "openshift-main",
             "provider": "OpenShift/Kubernetes",
-            "mode": "mock" if settings.MOCK_MODE else "real",
+            "mode": "real",
             "health_score": health_score,
         },
         "capacity": {
@@ -142,7 +130,7 @@ def cluster_overview():
 
 @router.get("/nodes")
 def nodes():
-    return _nodes()
+    return _real_nodes()
 
 
 @router.get("/namespaces")
@@ -167,7 +155,7 @@ def namespaces():
 
 @router.get("/measurements")
 def measurements(hours: int = Query(default=24, ge=1, le=168)):
-    nodes = _nodes()
+    nodes = _real_nodes()
     namespaces_data = namespaces()
     return {
         "period_hours": hours,
