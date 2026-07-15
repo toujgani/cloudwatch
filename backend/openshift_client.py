@@ -69,14 +69,30 @@ def list_deployments(namespace: str = "") -> list[dict]:
 def list_pod_metrics() -> dict[str, dict]:
     """
     Métriques CPU/RAM via metrics-server (metrics.k8s.io/v1beta1).
+    Tries namespace-scoped first (sandbox-friendly), falls back to cluster-wide.
     Retourne un dict  {namespace/name: {cpu_millicores, ram_mb}}
     """
-    path = "/apis/metrics.k8s.io/v1beta1/pods"
+    from .config import settings
+    namespace = getattr(settings, 'KUBE_NAMESPACE', '') or ''
+    
+    # Try namespace-scoped first (works in sandbox)
+    if namespace:
+        path = f"/apis/metrics.k8s.io/v1beta1/namespaces/{namespace}/pods"
+    else:
+        path = "/apis/metrics.k8s.io/v1beta1/pods"
+    
     resp = _session().get(_url(path), timeout=15)
-    if resp.status_code in (404, 503):
-        # metrics-server non installé — on retourne vide
-        logger.warning("metrics-server not available: %s", resp.status_code)
-        return {}
+    if resp.status_code in (404, 503, 403):
+        # Try cluster-wide as fallback
+        if namespace:
+            resp2 = _session().get(_url("/apis/metrics.k8s.io/v1beta1/pods"), timeout=15)
+            if resp2.status_code in (404, 503, 403):
+                logger.warning("metrics-server not available: %s / %s", resp.status_code, resp2.status_code)
+                return {}
+            resp = resp2
+        else:
+            logger.warning("metrics-server not available: %s", resp.status_code)
+            return {}
     resp.raise_for_status()
 
     result = {}

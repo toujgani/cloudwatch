@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     KUBE_API_URL: str = "https://localhost:6443"
     KUBE_TOKEN: str = ""
     KUBE_VERIFY_SSL: bool = False
+    KUBE_NAMESPACE: str = ""  # if set, only monitor this namespace
 
     # Collector
     COLLECT_INTERVAL_SECONDS: int = 30
@@ -47,10 +48,10 @@ class Settings(BaseSettings):
     ALERT_EMAIL_TO: str = ""
     SMTP_USE_TLS: bool = True
 
-    # Mock mode — split per source
-    MOCK_MODE: bool = False              # legacy fallback
-    MOCK_OPENSTACK: bool = True          # VMs: mocked (no real OpenStack)
-    MOCK_OPENSHIFT: bool = False         # Pods: real OpenShift sandbox
+    # Mock mode — disabled. No mock data. Empty if source unreachable.
+    MOCK_MODE: bool = False
+    MOCK_OPENSTACK: bool = False
+    MOCK_OPENSHIFT: bool = False
 
     # Grafana API
     GRAFANA_URL: str = "http://localhost:3000"

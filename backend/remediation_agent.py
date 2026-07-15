@@ -183,18 +183,6 @@ def _format_plan(plan: RemediationPlan) -> str:
 
 def _run_real_action(db: Session, plan: RemediationPlan, alert: Alert, operator: str) -> RemediationResult:
     action = plan.action
-    # Check if the relevant source is mocked
-    is_mocked = (
-        (alert.vm_id and (settings.MOCK_OPENSTACK or settings.MOCK_MODE)) or
-        (alert.pod_id and (settings.MOCK_OPENSHIFT or settings.MOCK_MODE)) or
-        settings.MOCK_MODE
-    )
-    if is_mocked:
-        return RemediationResult(
-            action=action,
-            status="applied_mock",
-            message=f"Mode mock: action automatique simulee par {operator}. {_format_plan(plan)}",
-        )
 
     if action == "extend_storage" and alert.vm_id:
         volume_ids = openstack_client.get_attached_volume_ids(alert.vm_id)

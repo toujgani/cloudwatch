@@ -5,7 +5,8 @@ Collecteur principal — tourne toutes les N secondes via APScheduler.
 3. Persiste en base PostgreSQL
 4. Évalue les règles d'alertes
 
-Mode mock: MOCK_MODE=true dans .env → données simulées sans vraies APIs.
+No mock mode — if a source is unreachable, it logs the error and skips.
+The dashboard shows empty/no data for that source.
 """
 import logging
 from datetime import datetime
@@ -17,7 +18,6 @@ from .config import settings
 from . import openstack_client as os_client
 from . import openshift_client as k8s_client
 from . import alerts as alert_engine
-from . import mock_data
 
 logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
@@ -26,35 +26,12 @@ scheduler = BackgroundScheduler()
 # ─── OpenStack Collect ────────────────────────────────────────────────────────
 
 def collect_openstack(db: Session):
-    logger.info("[Collector] OpenStack — start (mock=%s)", settings.MOCK_OPENSTACK or settings.MOCK_MODE)
-
-    # ── Mode mock ──
-    if settings.MOCK_OPENSTACK or settings.MOCK_MODE:
-        vms_data = mock_data.get_mock_vms()
-        for data in vms_data:
-            vm = db.get(VirtualMachine, data["id"])
-            if vm is None:
-                vm = VirtualMachine(id=data["id"])
-                db.add(vm)
-            vm.name = data["name"]; vm.status = data["status"]
-            vm.flavor = data["flavor"]; vm.host = data["host"]
-            vm.tenant_id = data["tenant_id"]; vm.updated_at = datetime.utcnow()
-            db.add(VMMetric(
-                vm_id=data["id"], cpu_percent=data["cpu_percent"],
-                ram_percent=data["ram_percent"], ram_used_mb=data["ram_used_mb"],
-                ram_total_mb=data["ram_total_mb"], disk_read_mb=data["disk_read_mb"],
-                disk_write_mb=data["disk_write_mb"], collected_at=datetime.utcnow(),
-            ))
-            alert_engine.evaluate_vm(db, vm, data["cpu_percent"], data["ram_percent"])
-        db.commit()
-        logger.info("[Collector] OpenStack mock — done (%d VMs)", len(vms_data))
-        return
-
-    # ── Mode réel ──
+    """Collect VMs from real OpenStack. If unreachable, skip silently."""
+    logger.info("[Collector] OpenStack — attempting real connection")
     try:
         servers = os_client.list_servers()
     except Exception as e:
-        logger.error("[Collector] OpenStack list_servers failed: %s", e)
+        logger.warning("[Collector] OpenStack unavailable — no VM data. (%s)", e)
         return
 
     for server in servers:
@@ -65,7 +42,6 @@ def collect_openstack(db: Session):
 
         data = os_client.parse_vm(server, diag)
 
-        # Upsert VM
         vm = db.get(VirtualMachine, data["id"])
         if vm is None:
             vm = VirtualMachine(id=data["id"])
@@ -78,7 +54,6 @@ def collect_openstack(db: Session):
         vm.tenant_id = data["tenant_id"]
         vm.updated_at = datetime.utcnow()
 
-        # Metric row
         metric = VMMetric(
             vm_id        = data["id"],
             cpu_percent  = data["cpu_percent"],
@@ -90,8 +65,6 @@ def collect_openstack(db: Session):
             collected_at = datetime.utcnow(),
         )
         db.add(metric)
-
-        # Alert evaluation
         alert_engine.evaluate_vm(db, vm, data["cpu_percent"], data["ram_percent"])
 
     db.commit()
@@ -101,37 +74,21 @@ def collect_openstack(db: Session):
 # ─── OpenShift Collect ────────────────────────────────────────────────────────
 
 def collect_openshift(db: Session):
-    logger.info("[Collector] OpenShift — start (mock=%s)", settings.MOCK_OPENSHIFT or settings.MOCK_MODE)
-
-    # ── Mode mock ──
-    if settings.MOCK_OPENSHIFT or settings.MOCK_MODE:
-        pods_data = mock_data.get_mock_pods()
-        for data in pods_data:
-            pod = db.get(Pod, data["id"])
-            if pod is None:
-                pod = Pod(id=data["id"])
-                db.add(pod)
-            pod.name = data["name"]; pod.namespace = data["namespace"]
-            pod.status = data["status"]; pod.node = data["node"]
-            pod.restart_count = data["restart_count"]; pod.image = data["image"]
-            pod.updated_at = datetime.utcnow()
-            db.add(PodMetric(
-                pod_id=data["id"], cpu_millicores=data["cpu_millicores"],
-                ram_mb=data["ram_mb"], restart_count=data["restart_count"],
-                collected_at=datetime.utcnow(),
-            ))
-            alert_engine.evaluate_pod(db, pod, data["restart_count"])
-        db.commit()
-        logger.info("[Collector] OpenShift mock — done (%d pods)", len(pods_data))
+    """Collect pods from real OpenShift. If unreachable, skip silently."""
+    logger.info("[Collector] OpenShift — attempting real connection")
+    try:
+        namespace = settings.KUBE_NAMESPACE or ""
+        pods = k8s_client.list_pods(namespace=namespace)
+    except Exception as e:
+        logger.warning("[Collector] OpenShift unavailable — no pod data. (%s)", e)
         return
 
-    # ── Mode réel ──
+    # Metrics are optional — sandbox may block cluster-wide metrics endpoint
     try:
-        pods    = k8s_client.list_pods()
         metrics = k8s_client.list_pod_metrics()
     except Exception as e:
-        logger.error("[Collector] OpenShift failed: %s", e)
-        return
+        logger.warning("[Collector] OpenShift metrics unavailable — using pods without CPU/RAM. (%s)", e)
+        metrics = {}
 
     for item in pods:
         data = k8s_client.parse_pod(item, metrics)
@@ -157,7 +114,6 @@ def collect_openshift(db: Session):
             collected_at   = datetime.utcnow(),
         )
         db.add(m)
-
         alert_engine.evaluate_pod(db, pod, data["restart_count"])
 
     db.commit()
@@ -190,7 +146,6 @@ def start_scheduler():
     )
     scheduler.start()
     logger.info("[Scheduler] Started — interval %ds", settings.COLLECT_INTERVAL_SECONDS)
-    # Run once immediately on startup
     collect_all()
 
 
