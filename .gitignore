@@ -41,3 +41,6 @@ Thumbs.db
 
 # Build artifacts
 static/
+
+# OpenShift secrets (contain passwords — apply manually, never push)
+openshift/secrets.yaml

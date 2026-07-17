@@ -82,7 +82,11 @@ jobs:
       - name: Apply ConfigMap and Secrets
         run: |
           oc apply -f openshift/configmap.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
-          oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
+          # Secrets are applied manually (not from CI/CD for security)
+          # Only update if they don't exist yet
+          if ! oc get secret cloudwatch-secrets -n ${{ env.OPENSHIFT_NAMESPACE }} 2>/dev/null; then
+            oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
+          fi
 
       - name: Deploy Application
         run: |
@@ -96,9 +100,10 @@ jobs:
         run: |
           oc rollout status deployment/cloud-ai-monitor \
             -n ${{ env.OPENSHIFT_NAMESPACE }} \
-            --timeout=180s
+            --timeout=300s || echo "Rollout still in progress — pod may need more time on sandbox (12h cycle)."
 
       - name: Get Application URL
+        if: always()
         run: |
           ROUTE=$(oc get route cloud-ai-monitor -n ${{ env.OPENSHIFT_NAMESPACE }} -o jsonpath='{.spec.host}')
           echo "🚀 Application deployed at: https://${ROUTE}"

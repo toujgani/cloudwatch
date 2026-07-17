@@ -257,6 +257,54 @@ def _run_real_action(db: Session, plan: RemediationPlan, alert: Alert, operator:
             message=f"Pod {alert.pod_id} supprime automatiquement par {operator}; le controller doit le recreer.",
         )
 
+    # ── Kubernetes-native scaling (OpenShift sandbox) ─────────────────────────
+
+    if action == "scale_memory" and alert.pod_id:
+        # Increase memory limit on the deployment by REMEDIATION_MEMORY_SCALE_PERCENT
+        try:
+            current_limit = 1000  # Default 1000Mi if unknown
+            new_limit = int(current_limit * (1 + settings.REMEDIATION_MEMORY_SCALE_PERCENT / 100))
+            openshift_client.patch_deployment_resources(
+                alert.pod_id,
+                memory_limit=f"{new_limit}Mi",
+                memory_request=f"{new_limit // 2}Mi",
+            )
+            return RemediationResult(
+                action=action,
+                status="applied",
+                message=f"Deployment pour {alert.pod_id} patche: memory limit augmente a {new_limit}Mi par {operator}. Rolling update en cours.",
+            )
+        except Exception as e:
+            return RemediationResult(action, "blocked", f"Patch memory echoue: {e}")
+
+    if action == "scale_compute" and alert.pod_id:
+        # Increase CPU limit on the deployment
+        try:
+            openshift_client.patch_deployment_resources(
+                alert.pod_id,
+                cpu_limit="1500m",
+                cpu_request="200m",
+            )
+            return RemediationResult(
+                action=action,
+                status="applied",
+                message=f"Deployment pour {alert.pod_id} patche: CPU limit augmente a 1500m par {operator}. Rolling update en cours.",
+            )
+        except Exception as e:
+            return RemediationResult(action, "blocked", f"Patch CPU echoue: {e}")
+
+    if action == "isolate_workload" and alert.pod_id:
+        # Rollout restart the deployment to get fresh pods
+        try:
+            openshift_client.rollout_restart(alert.pod_id)
+            return RemediationResult(
+                action=action,
+                status="applied",
+                message=f"Rollout restart declenche pour le deployment de {alert.pod_id} par {operator}.",
+            )
+        except Exception as e:
+            return RemediationResult(action, "blocked", f"Rollout restart echoue: {e}")
+
     if action == "quarantine_vm" and alert.vm_id:
         openstack_client.stop_server(alert.vm_id)
         return RemediationResult(

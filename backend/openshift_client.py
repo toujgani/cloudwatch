@@ -179,6 +179,179 @@ def delete_pod(pod_id: str) -> None:
         resp.raise_for_status()
 
 
+# ─── Remediation Actions (Patch Deployments) ─────────────────────────────────
+
+def _get_deployment_for_pod(pod_id: str) -> tuple[str, str, dict] | None:
+    """
+    Find the Deployment that owns a pod.
+    Returns (namespace, deployment_name, deployment_object) or None.
+    """
+    if "/" not in pod_id:
+        return None
+    namespace, pod_name = pod_id.split("/", 1)
+
+    # Get the pod to find its owner
+    path = f"/api/v1/namespaces/{namespace}/pods/{pod_name}"
+    resp = _session().get(_url(path), timeout=15)
+    if resp.status_code != 200:
+        return None
+
+    pod = resp.json()
+    owner_refs = pod.get("metadata", {}).get("ownerReferences", [])
+
+    # Pod → ReplicaSet → Deployment
+    for ref in owner_refs:
+        if ref.get("kind") == "ReplicaSet":
+            rs_name = ref["name"]
+            # Get the ReplicaSet to find the Deployment
+            rs_path = f"/apis/apps/v1/namespaces/{namespace}/replicasets/{rs_name}"
+            rs_resp = _session().get(_url(rs_path), timeout=15)
+            if rs_resp.status_code != 200:
+                continue
+            rs = rs_resp.json()
+            rs_owners = rs.get("metadata", {}).get("ownerReferences", [])
+            for rs_ref in rs_owners:
+                if rs_ref.get("kind") == "Deployment":
+                    deploy_name = rs_ref["name"]
+                    # Get the actual deployment
+                    deploy_path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{deploy_name}"
+                    deploy_resp = _session().get(_url(deploy_path), timeout=15)
+                    if deploy_resp.status_code == 200:
+                        return namespace, deploy_name, deploy_resp.json()
+    return None
+
+
+def patch_deployment_resources(
+    pod_id: str,
+    cpu_limit: str | None = None,
+    memory_limit: str | None = None,
+    cpu_request: str | None = None,
+    memory_request: str | None = None,
+) -> dict:
+    """
+    Patch a Deployment's container resource limits/requests.
+    This triggers a rolling update — Kubernetes recreates pods with new limits.
+
+    Args:
+        pod_id: "namespace/pod-name" — we find the parent Deployment automatically
+        cpu_limit: e.g. "1000m" or "2000m"
+        memory_limit: e.g. "512Mi" or "1Gi"
+        cpu_request: e.g. "100m" or "200m"
+        memory_request: e.g. "256Mi" or "512Mi"
+
+    Returns: the patched deployment spec
+    """
+    result = _get_deployment_for_pod(pod_id)
+    if not result:
+        raise RuntimeError(f"Cannot find Deployment for pod {pod_id}")
+
+    namespace, deploy_name, deployment = result
+
+    # Build the resource patch for the first container
+    resources_patch = {}
+    limits = {}
+    requests = {}
+
+    if cpu_limit:
+        limits["cpu"] = cpu_limit
+    if memory_limit:
+        limits["memory"] = memory_limit
+    if cpu_request:
+        requests["cpu"] = cpu_request
+    if memory_request:
+        requests["memory"] = memory_request
+
+    if limits:
+        resources_patch["limits"] = limits
+    if requests:
+        resources_patch["requests"] = requests
+
+    if not resources_patch:
+        raise ValueError("No resource changes specified")
+
+    # Strategic merge patch on the deployment
+    patch_body = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": deployment["spec"]["template"]["spec"]["containers"][0]["name"],
+                            "resources": resources_patch,
+                        }
+                    ]
+                }
+            }
+        }
+    }
+
+    path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{deploy_name}"
+    s = _session()
+    s.headers.update({"Content-Type": "application/strategic-merge-patch+json"})
+    resp = s.patch(_url(path), json=patch_body, timeout=20)
+    resp.raise_for_status()
+
+    logger.info("Patched deployment %s/%s resources: %s", namespace, deploy_name, resources_patch)
+    return resp.json()
+
+
+def scale_deployment(pod_id: str, replicas: int) -> dict:
+    """
+    Scale a Deployment's replica count.
+    Used when the AI decides more instances are needed for availability.
+    """
+    result = _get_deployment_for_pod(pod_id)
+    if not result:
+        raise RuntimeError(f"Cannot find Deployment for pod {pod_id}")
+
+    namespace, deploy_name, _ = result
+
+    patch_body = {"spec": {"replicas": replicas}}
+
+    path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{deploy_name}"
+    s = _session()
+    s.headers.update({"Content-Type": "application/strategic-merge-patch+json"})
+    resp = s.patch(_url(path), json=patch_body, timeout=15)
+    resp.raise_for_status()
+
+    logger.info("Scaled deployment %s/%s to %d replicas", namespace, deploy_name, replicas)
+    return resp.json()
+
+
+def rollout_restart(pod_id: str) -> dict:
+    """
+    Trigger a rolling restart of a Deployment (equivalent to oc rollout restart).
+    Patches the pod template annotation to force new pods.
+    """
+    import time
+    result = _get_deployment_for_pod(pod_id)
+    if not result:
+        raise RuntimeError(f"Cannot find Deployment for pod {pod_id}")
+
+    namespace, deploy_name, _ = result
+
+    patch_body = {
+        "spec": {
+            "template": {
+                "metadata": {
+                    "annotations": {
+                        "cloudwatch.ai/restartedAt": str(int(time.time()))
+                    }
+                }
+            }
+        }
+    }
+
+    path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{deploy_name}"
+    s = _session()
+    s.headers.update({"Content-Type": "application/strategic-merge-patch+json"})
+    resp = s.patch(_url(path), json=patch_body, timeout=15)
+    resp.raise_for_status()
+
+    logger.info("Rollout restart triggered for %s/%s", namespace, deploy_name)
+    return resp.json()
+
+
 def parse_pod(item: dict, metrics: dict) -> dict:
     """Construit un dict normalisé depuis les données brutes Kubernetes."""
     meta   = item.get("metadata", {})
