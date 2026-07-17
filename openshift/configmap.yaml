@@ -8,10 +8,10 @@ metadata:
     app.kubernetes.io/name: cloud-ai-monitor
     app.kubernetes.io/component: config
 data:
-  # OpenStack
-  OS_AUTH_URL: "http://your-openstack:5000/v3"
-  OS_USERNAME: "admin"
-  OS_PROJECT_NAME: "admin"
+  # OpenStack (empty = skip collection, no DNS errors)
+  OS_AUTH_URL: ""
+  OS_USERNAME: ""
+  OS_PROJECT_NAME: ""
   OS_USER_DOMAIN_NAME: "Default"
   OS_PROJECT_DOMAIN_NAME: "Default"
 

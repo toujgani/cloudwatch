@@ -26,7 +26,9 @@ scheduler = BackgroundScheduler()
 # ─── OpenStack Collect ────────────────────────────────────────────────────────
 
 def collect_openstack(db: Session):
-    """Collect VMs from real OpenStack. If unreachable, skip silently."""
+    """Collect VMs from real OpenStack. If unreachable or unconfigured, skip silently."""
+    if not settings.OS_AUTH_URL:
+        return  # OpenStack not configured — skip without logging
     logger.info("[Collector] OpenStack — attempting real connection")
     try:
         servers = os_client.list_servers()
