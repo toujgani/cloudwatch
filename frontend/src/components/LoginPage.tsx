@@ -46,7 +46,11 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
       alignItems: 'center',
       justifyContent: 'center',
       padding: 24,
-      background: `linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.55)), url('/tangermedlogo.jpg') center/cover no-repeat fixed`,
+      backgroundImage: `linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.55)), url(/tangermedlogo.jpg)`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      backgroundAttachment: 'fixed',
     }}>
       <main style={{
         width: 'min(100%, 440px)',
