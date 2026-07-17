@@ -21,29 +21,10 @@ def email_alerts_configured() -> bool:
     )
 
 
-def send_alert_email(alert: Alert):
-    """Send an email notification for a newly-created alert."""
+def _send_email(subject: str, body: str):
+    """Internal helper to send an email."""
     if not email_alerts_configured():
-        logger.info("[EMAIL] Alert email disabled or not configured.")
         return
-
-    resource = alert.vm_id or alert.pod_id or "unknown"
-    subject = f"[CloudWatch] {alert.severity.value.upper()} - {alert.title}"
-    body = f"""Nouvelle alerte CloudWatch
-
-Severite: {alert.severity.value.upper()}
-Titre: {alert.title}
-Ressource: {resource}
-Regle: {alert.rule_name or "-"}
-Valeur: {alert.metric_value}
-Seuil: {alert.threshold}
-Date: {alert.triggered_at}
-
-Description:
-{alert.description or "-"}
-
-Dashboard: http://localhost:5173/alerts
-"""
 
     message = EmailMessage()
     message["Subject"] = subject
@@ -58,6 +39,65 @@ Dashboard: http://localhost:5173/alerts
             if settings.SMTP_USERNAME:
                 smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
             smtp.send_message(message)
-        logger.info("[EMAIL] Alert notification sent: %s", subject)
+        logger.info("[EMAIL] Notification sent: %s", subject)
     except Exception as exc:
-        logger.exception("[EMAIL] Failed to send alert notification: %s", exc)
+        logger.exception("[EMAIL] Failed to send notification: %s", exc)
+
+
+def send_alert_email(alert: Alert):
+    """Send an email notification for a newly-created alert."""
+    if not email_alerts_configured():
+        return
+
+    resource = alert.vm_id or alert.pod_id or "unknown"
+    subject = f"[Cloud AI Monitor] {alert.severity.value.upper()} — {alert.title}"
+    body = f"""Nouvelle alerte Cloud AI Monitor
+
+Severite: {alert.severity.value.upper()}
+Titre: {alert.title}
+Ressource: {resource}
+Regle: {alert.rule_name or "-"}
+Valeur: {alert.metric_value}
+Seuil: {alert.threshold}
+Date: {alert.triggered_at}
+
+AI Score: {alert.ai_score or "N/A"}
+AI Decision: {alert.ai_decision or "N/A"}
+AI Recommendation: {alert.ai_recommendation or "N/A"}
+
+Description:
+{alert.description or "-"}
+"""
+    _send_email(subject, body)
+
+
+def send_remediation_email(alert: Alert):
+    """Send an email when the AI executes a remediation action."""
+    if not email_alerts_configured():
+        return
+
+    resource = alert.vm_id or alert.pod_id or "unknown"
+    subject = f"[Cloud AI Monitor] REMEDIATION — {alert.remediation_action} sur {resource}"
+    body = f"""Action de remediation AI executee
+
+Action: {alert.remediation_action}
+Statut: {alert.remediation_status}
+Ressource: {resource}
+AI Score: {alert.ai_score}
+AI Decision: {alert.ai_decision}
+
+Alerte originale:
+  Titre: {alert.title}
+  Severite: {alert.severity.value.upper()}
+  Regle: {alert.rule_name or "-"}
+
+Message remediation:
+{alert.remediation_message or "-"}
+
+Vecteur anomalie: A = [{alert.anomaly_m or 0:.3f}, {alert.anomaly_l or 0:.3f}, {alert.anomaly_t or 0:.3f}]
+Norme: |A| = {alert.anomaly_vector_norm or 0:.4f}
+
+---
+Cloud AI Monitor — CIRES Technologies / Tanger Med
+"""
+    _send_email(subject, body)

@@ -12,6 +12,7 @@ from .models import Alert, StatusEnum, VirtualMachine, AuditActionEnum
 from .ai_agent import apply_decision
 from . import openstack_client, openshift_client
 from . import audit as audit_trail
+from .email_notifications import send_remediation_email
 
 
 @dataclass
@@ -344,6 +345,9 @@ def execute_remediation(db: Session, alert: Alert, operator: str = "AI-Agent", f
             "ai_score": alert.ai_score,
         },
     )
+
+    # Send email notification for every remediation action
+    send_remediation_email(alert)
 
     return alert
 
