@@ -4,6 +4,7 @@ import type { AuthUser, UserRole } from '../types'
 const links = [
   { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'viewer'] },
   { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin'] },
+  { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin'] },
   { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
   { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin'] },
   { to: '/grafana', icon: 'GRF', label: 'Visualisations', roles: ['admin', 'viewer'] },

@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cloud AI Monitor — Chaos/Stress Test Pod
+# Deploys a pod that intentionally consumes CPU or RAM to trigger the AI agent.
+#
+# Usage:
+#   Deploy:    oc apply -f openshift/stress-test.yaml
+#   Watch AI:  Check Alerts page → AI should detect and remediate
+#   Cleanup:   oc delete -f openshift/stress-test.yaml
+#
+# Modes (change the command):
+#   CPU stress:  stress --cpu 2 --timeout 300
+#   RAM stress:  stress --vm 1 --vm-bytes 200M --timeout 300
+#   Both:        stress --cpu 1 --vm 1 --vm-bytes 150M --timeout 300
+# ═══════════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-test
+  namespace: red1intheocean-dev
+  labels:
+    app: stress-test
+    app.kubernetes.io/name: cloud-ai-monitor
+    app.kubernetes.io/component: chaos-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress-test
+  template:
+    metadata:
+      labels:
+        app: stress-test
+        app.kubernetes.io/name: cloud-ai-monitor
+        app.kubernetes.io/component: chaos-test
+    spec:
+      containers:
+        - name: stress
+          image: docker.io/polinux/stress:latest
+          command: ["stress"]
+          # Spike CPU for 5 minutes then the pod exits (simulates saturation)
+          args: ["--cpu", "2", "--vm", "1", "--vm-bytes", "150M", "--timeout", "300"]
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      restartPolicy: Always

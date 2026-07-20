@@ -365,3 +365,107 @@ def get_pod_prediction(pod_id: str, metric: str = "cpu", hours: int = 2, db: Ses
         "data_points": pred.data_points,
         "message": pred.message,
     }
+
+
+# ─── Chaos Engineering / Stress Test ──────────────────────────────────────────
+
+class StressTestIn(BaseModel):
+    """Configure a stress test to demonstrate AI self-healing."""
+    mode: str = Field(default="cpu", description="cpu, ram, or both")
+    duration_seconds: int = Field(default=120, ge=30, le=600)
+    intensity: str = Field(default="medium", description="low, medium, high")
+
+
+@router.post("/chaos/deploy-stress")
+def deploy_stress_test(payload: StressTestIn):
+    """
+    Deploy a stress-test pod in the namespace.
+    This saturates CPU/RAM → triggers AI detection → AI remediates.
+    Full self-healing demo loop.
+    """
+    from .. import openshift_client as k8s
+
+    # Build stress command based on intensity
+    cpu_workers = {"low": "1", "medium": "2", "high": "4"}[payload.intensity]
+    ram_bytes = {"low": "64M", "medium": "150M", "high": "220M"}[payload.intensity]
+
+    if payload.mode == "cpu":
+        args = ["--cpu", cpu_workers, "--timeout", str(payload.duration_seconds)]
+    elif payload.mode == "ram":
+        args = ["--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
+    else:
+        args = ["--cpu", cpu_workers, "--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
+
+    # Build the deployment manifest
+    manifest = {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+            "name": "stress-test",
+            "namespace": "red1intheocean-dev",
+            "labels": {"app": "stress-test"},
+        },
+        "spec": {
+            "replicas": 1,
+            "selector": {"matchLabels": {"app": "stress-test"}},
+            "template": {
+                "metadata": {"labels": {"app": "stress-test"}},
+                "spec": {
+                    "containers": [{
+                        "name": "stress",
+                        "image": "docker.io/polinux/stress:latest",
+                        "command": ["stress"],
+                        "args": args,
+                        "resources": {
+                            "requests": {"memory": "64Mi", "cpu": "50m"},
+                            "limits": {"memory": "256Mi", "cpu": "500m"},
+                        },
+                    }],
+                },
+            },
+        },
+    }
+
+    # Apply via Kubernetes API
+    import requests as http_requests
+    path = "/apis/apps/v1/namespaces/red1intheocean-dev/deployments"
+    s = k8s._session()
+    s.headers.update({"Content-Type": "application/json"})
+
+    # Delete existing if any
+    del_resp = s.delete(k8s._url(f"{path}/stress-test"), timeout=10)
+    # Ignore 404
+
+    # Create new
+    import time
+    time.sleep(2)  # Wait for deletion to propagate
+    resp = s.post(k8s._url(path), json=manifest, timeout=15)
+
+    if resp.status_code in (200, 201):
+        return {
+            "status": "deployed",
+            "mode": payload.mode,
+            "intensity": payload.intensity,
+            "duration_seconds": payload.duration_seconds,
+            "message": f"Stress pod deployed. It will consume {payload.mode} for {payload.duration_seconds}s. "
+                       f"Watch the Alerts and AIOps pages — AI should detect and remediate within 60-120s.",
+        }
+    else:
+        return {
+            "status": "error",
+            "code": resp.status_code,
+            "message": resp.text[:500],
+        }
+
+
+@router.delete("/chaos/cleanup")
+def cleanup_stress_test():
+    """Remove the stress-test deployment."""
+    from .. import openshift_client as k8s
+
+    path = "/apis/apps/v1/namespaces/red1intheocean-dev/deployments/stress-test"
+    resp = k8s._session().delete(k8s._url(path), timeout=10)
+
+    if resp.status_code in (200, 202, 404):
+        return {"status": "cleaned", "message": "Stress test deployment removed."}
+    return {"status": "error", "code": resp.status_code, "message": resp.text[:300]}
