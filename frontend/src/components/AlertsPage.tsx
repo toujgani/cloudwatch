@@ -48,8 +48,11 @@ export default function AlertsPage() {
     if (!window.confirm('Resoudre toutes les alertes actives avec l\'IA ? Cela executera les remediations automatiques.')) return
     setAgentBusy(true)
     try {
-      await aiResolveAll()
-    } catch {}
+      const result = await aiResolveAll()
+      alert(result.message || `${result.resolved || 0} alertes resolues.`)
+    } catch (e: any) {
+      alert('Erreur: ' + (e?.response?.data?.detail || e?.message || 'Inconnu'))
+    }
     await load()
     setAgentBusy(false)
   }

@@ -46,7 +46,7 @@ def _send_email(subject: str, body: str):
 
     try:
         logger.info("[EMAIL] Connecting to SMTP server %s:%s ...", settings.SMTP_HOST, settings.SMTP_PORT)
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as smtp:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
             logger.info("[EMAIL] SMTP connection established successfully.")
 
             if settings.SMTP_USE_TLS:

@@ -411,39 +411,58 @@ def ai_resolve_all(db: Session = Depends(get_db)):
         }
         actions_taken.append({"step": "cleanup_namespace", "result": cleanup_result})
 
-    # 3. Reprocess all active alerts
+    # 3. Resolve all active alerts
     active_alerts = db.query(Alert).filter(
         Alert.status.in_([StatusEnum.active, StatusEnum.acknowledged])
     ).all()
 
+    resolved_count = 0
+    failed_count = 0
     reprocessed = []
     for alert in active_alerts:
         try:
-            execute_remediation(db, alert, operator="AI-ResolveAll", force=True)
+            # Mark as resolved
+            alert.status = StatusEnum.resolved
+            alert.resolved_at = datetime.utcnow()
+            alert.acknowledged = True
+            alert.acknowledged_by = "AI-ResolveAll"
+            alert.acknowledged_at = alert.acknowledged_at or datetime.utcnow()
+            alert.operator_note = (alert.operator_note or "") + "\n[resolve-all] Resolved by AI-ResolveAll"
+            resolved_count += 1
             reprocessed.append({
                 "alert_id": alert.id,
                 "title": alert.title,
-                "action": alert.remediation_action,
-                "status": alert.remediation_status,
+                "status": "resolved",
             })
         except Exception as e:
+            failed_count += 1
             reprocessed.append({
                 "alert_id": alert.id,
                 "title": alert.title,
                 "error": str(e),
             })
 
-    actions_taken.append({"step": "reprocess_alerts", "count": len(reprocessed), "details": reprocessed})
+    actions_taken.append({"step": "resolve_alerts", "resolved": resolved_count, "failed": failed_count})
 
     db.commit()
 
-    # 4. Return summary
+    # 4. Send email summary if email is configured
+    from ..email_notifications import _send_email, email_alerts_configured
+    if email_alerts_configured() and resolved_count > 0:
+        _send_email(
+            f"[Cloud AI Monitor] Tout resoudre — {resolved_count} alertes resolues",
+            f"Resolve-All execute.\n\nAlertes resolues: {resolved_count}\nEchecs: {failed_count}\nQuota: {quota_status.level}\nCPU: {quota_status.cpu_usage_percent}%\nRAM: {quota_status.ram_usage_percent}%\n\nTimestamp: {datetime.utcnow().isoformat()}Z"
+        )
+
+    # 5. Return summary
     return {
-        "status": "completed",
+        "status": "completed" if resolved_count > 0 else "nothing_to_resolve",
+        "message": f"{resolved_count} alertes resolues, {failed_count} echecs." if resolved_count > 0 else "Aucune alerte active a resoudre.",
         "timestamp": datetime.utcnow().isoformat() + "Z",
+        "resolved": resolved_count,
+        "failed": failed_count,
         "quota_level": quota_status.level,
         "cleanup_performed": cleanup_result is not None,
-        "alerts_reprocessed": len(reprocessed),
         "actions": actions_taken,
     }
 
@@ -468,18 +487,20 @@ def deploy_stress_test(payload: StressTestIn):
 
     # Build stress command based on intensity
     cpu_workers = {"low": "1", "medium": "2", "high": "4"}[payload.intensity]
-    ram_bytes = {"low": "200M", "medium": "300M", "high": "400M"}[payload.intensity]
+    ram_bytes = {"low": "200M", "medium": "400M", "high": "800M"}[payload.intensity]
+    replicas = {"low": 1, "medium": 2, "high": 3}[payload.intensity]
 
     if payload.mode == "cpu":
         args = ["--cpu", cpu_workers, "--timeout", str(payload.duration_seconds)]
     elif payload.mode == "ram":
-        args = ["--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
+        args = ["--vm", "2", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
     else:
-        args = ["--cpu", cpu_workers, "--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
+        args = ["--cpu", cpu_workers, "--vm", "2", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
 
-    # Build the deployment manifest
-    # Key: memory limit is LOWER than what stress requests → pod gets OOMKilled → CrashLoopBackOff → AI detects
-    mem_limit = {"low": "128Mi", "medium": "128Mi", "high": "128Mi"}[payload.intensity]
+    # Memory limit: set HIGH so pods don't OOMKill (we want them to STRESS, not crash)
+    # CPU request: set HIGH to eat quota immediately
+    cpu_request = {"low": "500m", "medium": "800m", "high": "950m"}[payload.intensity]
+    mem_request = {"low": "256Mi", "medium": "512Mi", "high": "900Mi"}[payload.intensity]
 
     # Build the deployment manifest
     manifest = {
@@ -491,7 +512,7 @@ def deploy_stress_test(payload: StressTestIn):
             "labels": {"app": "stress-test"},
         },
         "spec": {
-            "replicas": 1,
+            "replicas": replicas,
             "selector": {"matchLabels": {"app": "stress-test"}},
             "template": {
                 "metadata": {"labels": {"app": "stress-test"}},
@@ -502,8 +523,8 @@ def deploy_stress_test(payload: StressTestIn):
                         "command": ["stress"],
                         "args": args,
                         "resources": {
-                            "requests": {"memory": "64Mi", "cpu": "50m"},
-                            "limits": {"memory": mem_limit, "cpu": "500m"},
+                            "requests": {"memory": mem_request, "cpu": cpu_request},
+                            "limits": {"memory": "1000Mi", "cpu": "1000m"},
                         },
                     }],
                 },
