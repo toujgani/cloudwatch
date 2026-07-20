@@ -90,11 +90,15 @@ jobs:
 
       - name: Deploy Application
         run: |
+          # Ensure replicas are scaled up
+          oc scale deployment/postgresql --replicas=1 -n ${{ env.OPENSHIFT_NAMESPACE }} || true
           # Update the image tag in the deployment
           oc apply -f openshift/deployment.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
           oc set image deployment/cloud-ai-monitor \
             cloud-ai-monitor=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             -n ${{ env.OPENSHIFT_NAMESPACE }}
+          # Ensure app is scaled to 1
+          oc scale deployment/cloud-ai-monitor --replicas=1 -n ${{ env.OPENSHIFT_NAMESPACE }}
 
       - name: Wait for rollout
         run: |
