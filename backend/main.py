@@ -160,6 +160,33 @@ def health():
     }
 
 
+@app.get("/api/test-email")
+def test_email():
+    """Send a test email to verify SMTP configuration works."""
+    from .email_notifications import _send_email, email_alerts_configured
+    from .config import settings
+
+    if not email_alerts_configured():
+        return {
+            "status": "not_configured",
+            "EMAIL_ALERTS_ENABLED": settings.EMAIL_ALERTS_ENABLED,
+            "SMTP_HOST": settings.SMTP_HOST or "(empty)",
+            "SMTP_USERNAME": settings.SMTP_USERNAME or "(empty)",
+            "SMTP_PASSWORD": "(set)" if settings.SMTP_PASSWORD else "(EMPTY - this is the problem)",
+            "SMTP_FROM": settings.SMTP_FROM or "(empty)",
+            "ALERT_EMAIL_TO": settings.ALERT_EMAIL_TO or "(empty)",
+        }
+
+    try:
+        _send_email(
+            "[Cloud AI Monitor] Test Email",
+            "Ceci est un test. Si vous recevez ce message, la configuration SMTP fonctionne correctement."
+        )
+        return {"status": "sent", "to": settings.ALERT_EMAIL_TO}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @app.get("/api/dashboard/stats")
 def dashboard_stats():
     from .database import SessionLocal

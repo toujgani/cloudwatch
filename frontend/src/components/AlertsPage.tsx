@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { acknowledgeAlert, exportUrl, getAlerts, remediateActiveAlerts, remediateAlert, reprocessAlertAgent, resolveAlert } from '../api/client'
+import { acknowledgeAlert, exportUrl, getAlerts, remediateActiveAlerts, remediateAlert, reprocessAlertAgent, resolveAlert, aiResolveAll } from '../api/client'
 import type { Alert } from '../types'
 
 type Filter = 'active' | 'all' | 'resolved'
@@ -44,6 +44,16 @@ export default function AlertsPage() {
     setAgentBusy(false)
   }
 
+  const resolveAll = async () => {
+    if (!window.confirm('Resoudre toutes les alertes actives avec l\'IA ? Cela executera les remediations automatiques.')) return
+    setAgentBusy(true)
+    try {
+      await aiResolveAll()
+    } catch {}
+    await load()
+    setAgentBusy(false)
+  }
+
   const counts = {
     critical: alerts.filter(a => a.severity === 'critical' && a.status === 'active').length,
     warning: alerts.filter(a => a.severity === 'warning' && a.status === 'active').length,
@@ -62,6 +72,9 @@ export default function AlertsPage() {
         </button>
         <button className="btn btn-primary" disabled={agentBusy} onClick={runAIOpsAgent}>
           AIOps agent
+        </button>
+        <button className="btn" disabled={agentBusy} onClick={resolveAll} style={{ background: 'var(--green)', color: '#fff', borderColor: 'var(--green)' }}>
+          {agentBusy ? '...' : 'Tout resoudre'}
         </button>
         <a className="btn" href={exportUrl('alerts', filter === 'all' ? undefined : filter)}>Exporter CSV</a>
       </div>
