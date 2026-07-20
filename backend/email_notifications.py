@@ -24,7 +24,19 @@ def email_alerts_configured() -> bool:
 def _send_email(subject: str, body: str):
     """Internal helper to send an email."""
     if not email_alerts_configured():
+        logger.info("[EMAIL] Skipped — email not configured. Host=%s, Port=%s, Username=%s, From=%s, To=%s",
+                    settings.SMTP_HOST or "(empty)",
+                    settings.SMTP_PORT,
+                    settings.SMTP_USERNAME or "(empty)",
+                    settings.SMTP_FROM or "(empty)",
+                    settings.ALERT_EMAIL_TO or "(empty)")
         return
+
+    logger.info("[EMAIL] Sending notification: %s", subject)
+    logger.info("[EMAIL] Config — Host=%s, Port=%s, Username=%s, From=%s, To=%s",
+                settings.SMTP_HOST, settings.SMTP_PORT,
+                settings.SMTP_USERNAME or "(empty)",
+                settings.SMTP_FROM, settings.ALERT_EMAIL_TO)
 
     message = EmailMessage()
     message["Subject"] = subject
@@ -33,15 +45,31 @@ def _send_email(subject: str, body: str):
     message.set_content(body)
 
     try:
+        logger.info("[EMAIL] Connecting to SMTP server %s:%s ...", settings.SMTP_HOST, settings.SMTP_PORT)
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as smtp:
+            logger.info("[EMAIL] SMTP connection established successfully.")
+
             if settings.SMTP_USE_TLS:
+                logger.info("[EMAIL] Starting TLS handshake...")
                 smtp.starttls()
+                logger.info("[EMAIL] TLS connection succeeded.")
+
             if settings.SMTP_USERNAME:
+                logger.info("[EMAIL] Logging in as %s ...", settings.SMTP_USERNAME)
                 smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+                logger.info("[EMAIL] Login succeeded.")
+
+            logger.info("[EMAIL] Sending message to %s ...", settings.ALERT_EMAIL_TO)
             smtp.send_message(message)
-        logger.info("[EMAIL] Notification sent: %s", subject)
+            logger.info("[EMAIL] Send succeeded: %s", subject)
+    except smtplib.SMTPAuthenticationError as exc:
+        logger.exception("[EMAIL] Login FAILED (authentication error): %s", exc)
+    except smtplib.SMTPConnectError as exc:
+        logger.exception("[EMAIL] Connection FAILED: %s", exc)
+    except smtplib.SMTPException as exc:
+        logger.exception("[EMAIL] SMTP error: %s", exc)
     except Exception as exc:
-        logger.exception("[EMAIL] Failed to send notification: %s", exc)
+        logger.exception("[EMAIL] Failed to send notification (unexpected error): %s", exc)
 
 
 def send_alert_email(alert: Alert):

@@ -126,91 +126,67 @@ def collect_openshift(db: Session):
 
 def check_namespace_quota(db: Session):
     """
-    Check if total namespace resource usage exceeds quota.
-    Triggers alerts when CPU or RAM usage surpasses configured limits.
+    Check if total namespace resource usage exceeds soft quota.
+    Uses configurable soft quota thresholds to trigger alerts at
+    warning, critical, and auto-remediate levels.
     """
-    from .models import Alert, SeverityEnum, StatusEnum
+    from .models import SeverityEnum
+    from .soft_quota import get_quota_status
 
-    # Sum all pod metrics from the latest collection
-    total_cpu = db.query(Pod).with_entities(
-        db.query(PodMetric.cpu_millicores)
-        .filter(PodMetric.pod_id == Pod.id)
-        .order_by(PodMetric.collected_at.desc())
-        .limit(1)
-        .correlate(Pod)
-        .scalar_subquery()
-    ).all()
+    status = get_quota_status(db)
 
-    # Simpler approach: sum from pods table directly using latest metrics
-    pods = db.query(Pod).all()
-    total_cpu_m = 0.0
-    total_ram_mb = 0.0
-
-    for pod in pods:
-        latest_metric = db.query(PodMetric).filter(
-            PodMetric.pod_id == pod.id
-        ).order_by(PodMetric.collected_at.desc()).first()
-        if latest_metric:
-            total_cpu_m += latest_metric.cpu_millicores or 0
-            total_ram_mb += latest_metric.ram_mb or 0
-
-    # Quota limits (from ResourceQuota: requests.cpu = 3000m, requests.memory = 30Gi)
-    cpu_quota = 3000  # millicores
-    ram_quota = 30 * 1024  # 30Gi in MB
-
-    cpu_usage_pct = (total_cpu_m / cpu_quota) * 100 if cpu_quota > 0 else 0
-    ram_usage_pct = (total_ram_mb / ram_quota) * 100 if ram_quota > 0 else 0
-
-    # CPU quota breach
-    if cpu_usage_pct >= 90:
+    # CPU soft quota alerts
+    if status.cpu_level == "remediate" or status.cpu_level == "critical":
         alert_engine._create_alert(db,
             severity=SeverityEnum.critical,
-            title=f"Quota CPU namespace depasse — {total_cpu_m:.0f}m / {cpu_quota}m ({cpu_usage_pct:.0f}%)",
-            description=f"L'utilisation CPU totale du namespace ({total_cpu_m:.0f}m) depasse 90% du quota ({cpu_quota}m). Risque de throttling ou de rejet de nouveaux pods.",
+            title=f"Quota CPU namespace depasse — {status.total_cpu_used:.0f}m / {status.soft_cpu_limit:.0f}m ({status.cpu_usage_percent:.0f}%)",
+            description=f"L'utilisation CPU totale du namespace ({status.total_cpu_used:.0f}m) depasse le seuil {status.cpu_level} du soft quota ({status.soft_cpu_limit:.0f}m). Risque de throttling ou de rejet de nouveaux pods.",
             rule_name="namespace.cpu.quota.critical",
-            metric_value=total_cpu_m,
-            threshold=cpu_quota * 0.9,
+            metric_value=status.total_cpu_used,
+            threshold=status.soft_cpu_limit * (settings.QUOTA_THRESHOLD_CRITICAL / 100),
         )
-    elif cpu_usage_pct >= 75:
+    elif status.cpu_level == "warning":
         alert_engine._create_alert(db,
             severity=SeverityEnum.warning,
-            title=f"Quota CPU namespace eleve — {total_cpu_m:.0f}m / {cpu_quota}m ({cpu_usage_pct:.0f}%)",
-            description=f"L'utilisation CPU totale approche le quota. Envisager de reduire les workloads ou augmenter le quota.",
+            title=f"Quota CPU namespace eleve — {status.total_cpu_used:.0f}m / {status.soft_cpu_limit:.0f}m ({status.cpu_usage_percent:.0f}%)",
+            description=f"L'utilisation CPU totale approche le soft quota. Envisager de reduire les workloads ou augmenter le quota.",
             rule_name="namespace.cpu.quota.warning",
-            metric_value=total_cpu_m,
-            threshold=cpu_quota * 0.75,
+            metric_value=status.total_cpu_used,
+            threshold=status.soft_cpu_limit * (settings.QUOTA_THRESHOLD_WARNING / 100),
         )
     else:
         alert_engine._resolve_alert(db, "namespace.cpu.quota.critical")
         alert_engine._resolve_alert(db, "namespace.cpu.quota.warning")
 
-    # RAM quota breach
-    if ram_usage_pct >= 90:
+    # RAM soft quota alerts
+    if status.ram_level == "remediate" or status.ram_level == "critical":
         alert_engine._create_alert(db,
             severity=SeverityEnum.critical,
-            title=f"Quota RAM namespace depasse — {total_ram_mb:.0f}Mi / {ram_quota}Mi ({ram_usage_pct:.0f}%)",
-            description=f"L'utilisation memoire totale du namespace depasse 90% du quota. Pods en danger d'eviction.",
+            title=f"Quota RAM namespace depasse — {status.total_ram_used:.0f}Mi / {status.soft_ram_limit:.0f}Mi ({status.ram_usage_percent:.0f}%)",
+            description=f"L'utilisation memoire totale du namespace depasse le seuil {status.ram_level} du soft quota. Pods en danger d'eviction.",
             rule_name="namespace.ram.quota.critical",
-            metric_value=total_ram_mb,
-            threshold=ram_quota * 0.9,
+            metric_value=status.total_ram_used,
+            threshold=status.soft_ram_limit * (settings.QUOTA_THRESHOLD_CRITICAL / 100),
         )
-    elif ram_usage_pct >= 75:
+    elif status.ram_level == "warning":
         alert_engine._create_alert(db,
             severity=SeverityEnum.warning,
-            title=f"Quota RAM namespace eleve — {total_ram_mb:.0f}Mi / {ram_quota}Mi ({ram_usage_pct:.0f}%)",
-            description=f"L'utilisation memoire approche le quota. Surveiller les workloads ou liberer des ressources.",
+            title=f"Quota RAM namespace eleve — {status.total_ram_used:.0f}Mi / {status.soft_ram_limit:.0f}Mi ({status.ram_usage_percent:.0f}%)",
+            description=f"L'utilisation memoire approche le soft quota. Surveiller les workloads ou liberer des ressources.",
             rule_name="namespace.ram.quota.warning",
-            metric_value=total_ram_mb,
-            threshold=ram_quota * 0.75,
+            metric_value=status.total_ram_used,
+            threshold=status.soft_ram_limit * (settings.QUOTA_THRESHOLD_WARNING / 100),
         )
     else:
         alert_engine._resolve_alert(db, "namespace.ram.quota.critical")
         alert_engine._resolve_alert(db, "namespace.ram.quota.warning")
 
     db.commit()
-    if cpu_usage_pct >= 75 or ram_usage_pct >= 75:
-        logger.warning("[Quota] CPU: %.0f%% (%0.fm/%dm) | RAM: %.0f%% (%.0fMi/%dMi)",
-                       cpu_usage_pct, total_cpu_m, cpu_quota, ram_usage_pct, total_ram_mb, ram_quota)
+    if status.level != "normal":
+        logger.warning("[Quota] Level=%s | CPU: %.0f%% (%.0fm/%.0fm) | RAM: %.0f%% (%.0fMi/%.0fMi)",
+                       status.level,
+                       status.cpu_usage_percent, status.total_cpu_used, status.soft_cpu_limit,
+                       status.ram_usage_percent, status.total_ram_used, status.soft_ram_limit)
 
 
 # ─── Scheduled job ────────────────────────────────────────────────────────────

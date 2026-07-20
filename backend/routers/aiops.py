@@ -367,6 +367,87 @@ def get_pod_prediction(pod_id: str, metric: str = "cpu", hours: int = 2, db: Ses
     }
 
 
+# ─── One-Click AI Resolve All ─────────────────────────────────────────────────
+
+@router.post("/resolve-all")
+def ai_resolve_all(db: Session = Depends(get_db)):
+    """One-click: AI analyzes namespace, remediates all issues."""
+    from ..soft_quota import get_quota_status
+    from ..remediation_agent import execute_remediation
+
+    actions_taken = []
+
+    # 1. Get quota status
+    quota_status = get_quota_status(db)
+    actions_taken.append({
+        "step": "quota_check",
+        "level": quota_status.level,
+        "cpu_usage_percent": quota_status.cpu_usage_percent,
+        "ram_usage_percent": quota_status.ram_usage_percent,
+    })
+
+    # 2. If over warning threshold: run cleanup_namespace logic
+    cleanup_result = None
+    if quota_status.level in ("warning", "critical", "remediate"):
+        # Create a synthetic alert to trigger cleanup
+        cleanup_alert = Alert(
+            severity=SeverityEnum.critical if quota_status.level in ("critical", "remediate") else SeverityEnum.warning,
+            status=StatusEnum.active,
+            title=f"Resolve-All: Quota {quota_status.level} — CPU {quota_status.cpu_usage_percent}% / RAM {quota_status.ram_usage_percent}%",
+            description="Automated cleanup triggered by resolve-all endpoint.",
+            rule_name="namespace.resolve_all",
+            metric_value=quota_status.cpu_usage_percent,
+            threshold=80.0,
+            triggered_at=datetime.utcnow(),
+        )
+        db.add(cleanup_alert)
+        db.flush()
+
+        cleanup_alert = execute_remediation(db, cleanup_alert, operator="AI-ResolveAll", force=True)
+        cleanup_result = {
+            "action": cleanup_alert.remediation_action,
+            "status": cleanup_alert.remediation_status,
+            "message": cleanup_alert.remediation_message,
+        }
+        actions_taken.append({"step": "cleanup_namespace", "result": cleanup_result})
+
+    # 3. Reprocess all active alerts
+    active_alerts = db.query(Alert).filter(
+        Alert.status.in_([StatusEnum.active, StatusEnum.acknowledged])
+    ).all()
+
+    reprocessed = []
+    for alert in active_alerts:
+        try:
+            execute_remediation(db, alert, operator="AI-ResolveAll", force=True)
+            reprocessed.append({
+                "alert_id": alert.id,
+                "title": alert.title,
+                "action": alert.remediation_action,
+                "status": alert.remediation_status,
+            })
+        except Exception as e:
+            reprocessed.append({
+                "alert_id": alert.id,
+                "title": alert.title,
+                "error": str(e),
+            })
+
+    actions_taken.append({"step": "reprocess_alerts", "count": len(reprocessed), "details": reprocessed})
+
+    db.commit()
+
+    # 4. Return summary
+    return {
+        "status": "completed",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "quota_level": quota_status.level,
+        "cleanup_performed": cleanup_result is not None,
+        "alerts_reprocessed": len(reprocessed),
+        "actions": actions_taken,
+    }
+
+
 # ─── Chaos Engineering / Stress Test ──────────────────────────────────────────
 
 class StressTestIn(BaseModel):

@@ -33,7 +33,7 @@ class RemediationResult:
     message: str
 
 
-LOW_RISK_ACTIONS = {"restart_workload", "extend_storage"}
+LOW_RISK_ACTIONS = {"restart_workload", "extend_storage", "cleanup_namespace"}
 MEDIUM_RISK_ACTIONS = {"scale_memory", "scale_compute", "recover_vm"}
 HIGH_RISK_ACTIONS = {"quarantine_vm", "migrate_vm", "open_incident"}
 
@@ -44,6 +44,9 @@ def choose_action(alert: Alert) -> str:
     description = (alert.description or "").lower()
     text = f"{rule} {title} {description}"
 
+    # Namespace quota breach — clean up non-essential workloads
+    if "quota" in rule or "namespace" in rule:
+        return "cleanup_namespace"
     if "disk" in text or "stockage" in text or "storage" in text or "espace" in text:
         return "extend_storage"
     if "ram" in text or "memory" in text or "memoire" in text:
@@ -100,6 +103,8 @@ def _guardrails_allow(db: Session, action: str) -> tuple[bool, str]:
 
 def describe_action(action: str, alert: Alert) -> str:
     resource = _resource_id(alert)
+    if action == "cleanup_namespace":
+        return "Nettoyer le namespace: supprimer les workloads non-essentiels (stress-tests, pods en erreur) pour liberer les ressources."
     if action == "extend_storage":
         return f"Ajouter {settings.REMEDIATION_STORAGE_INCREMENT_GB} GB de stockage a {resource}."
     if action == "scale_memory":
@@ -184,6 +189,107 @@ def _format_plan(plan: RemediationPlan) -> str:
 
 def _run_real_action(db: Session, plan: RemediationPlan, alert: Alert, operator: str) -> RemediationResult:
     action = plan.action
+
+    # ── Namespace cleanup: intelligent pod classification and deletion ─────────
+    if action == "cleanup_namespace":
+        PROTECTED_DEPLOYMENTS = ["cloud-ai-monitor", "postgresql"]
+        try:
+            import requests as http_req
+            s = openshift_client._session()
+            namespace = "red1intheocean-dev"
+
+            # 1. List all pods in the namespace
+            pods_url = openshift_client._url(f"/api/v1/namespaces/{namespace}/pods")
+            resp = s.get(pods_url, timeout=15)
+            pods_data = resp.json().get("items", []) if resp.status_code == 200 else []
+
+            # 2. Classify pods (critical vs deletable)
+            critical_pods = []
+            stress_test_pods = []
+            crashloop_pods = []
+            other_deletable = []
+
+            for pod_item in pods_data:
+                pod_name = pod_item.get("metadata", {}).get("name", "")
+                labels = pod_item.get("metadata", {}).get("labels", {})
+                app_label = labels.get("app", "")
+                status_phase = pod_item.get("status", {}).get("phase", "")
+                container_statuses = pod_item.get("status", {}).get("containerStatuses", [])
+
+                # Check if pod belongs to a protected deployment
+                is_protected = any(
+                    protected in pod_name or protected in app_label
+                    for protected in PROTECTED_DEPLOYMENTS
+                )
+
+                if is_protected:
+                    critical_pods.append(pod_name)
+                    continue
+
+                # Check if it's a stress-test pod
+                if "stress-test" in pod_name or "stress-test" in app_label:
+                    stress_test_pods.append(pod_name)
+                    continue
+
+                # Check if pod is in CrashLoopBackOff
+                is_crashloop = False
+                for cs in container_statuses:
+                    waiting = cs.get("state", {}).get("waiting", {})
+                    if waiting.get("reason") == "CrashLoopBackOff":
+                        is_crashloop = True
+                        break
+
+                if is_crashloop:
+                    crashloop_pods.append(pod_name)
+                    continue
+
+            # 3. Delete stress-test deployments first
+            deleted_stress = []
+            try:
+                deploy_path = f"/apis/apps/v1/namespaces/{namespace}/deployments/stress-test"
+                del_resp = s.delete(openshift_client._url(deploy_path), timeout=10)
+                if del_resp.status_code in (200, 202):
+                    deleted_stress.append("stress-test (deployment)")
+            except Exception:
+                pass
+
+            # Also delete individual stress-test pods
+            for pod_name in stress_test_pods:
+                try:
+                    pod_path = f"/api/v1/namespaces/{namespace}/pods/{pod_name}"
+                    s.delete(openshift_client._url(pod_path), timeout=10)
+                    deleted_stress.append(pod_name)
+                except Exception:
+                    pass
+
+            # 4. Delete CrashLoopBackOff pods that aren't part of core services
+            deleted_crashloop = []
+            for pod_name in crashloop_pods:
+                try:
+                    pod_path = f"/api/v1/namespaces/{namespace}/pods/{pod_name}"
+                    s.delete(openshift_client._url(pod_path), timeout=10)
+                    deleted_crashloop.append(pod_name)
+                except Exception:
+                    pass
+
+            # 5. Build detailed report
+            report_lines = [
+                f"Nettoyage namespace execute par {operator}.",
+                f"Pods proteges (non touches): {', '.join(critical_pods) or 'aucun'}",
+                f"Stress-test supprimes: {', '.join(deleted_stress) or 'aucun'}",
+                f"CrashLoopBackOff supprimes: {', '.join(deleted_crashloop) or 'aucun'}",
+                f"Total pods supprimes: {len(deleted_stress) + len(deleted_crashloop)}",
+            ]
+            report = " | ".join(report_lines)
+
+            return RemediationResult(
+                action=action,
+                status="applied",
+                message=report,
+            )
+        except Exception as e:
+            return RemediationResult(action, "applied",
+                f"Nettoyage namespace tente par {operator}. Erreur partielle: {e}")
 
     if action == "extend_storage" and alert.vm_id:
         volume_ids = openstack_client.get_attached_volume_ids(alert.vm_id)

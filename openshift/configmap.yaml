@@ -64,6 +64,13 @@ data:
   REMEDIATION_VM_RECOVERY_ACTION: "hard_reboot"
   REMEDIATION_K8S_SAFE_NAMESPACES: "red1intheocean-dev"
 
+  # Soft Quota (percentage of actual sandbox quota to use as operating limit)
+  SOFT_QUOTA_CPU_PERCENT: "90"
+  SOFT_QUOTA_RAM_PERCENT: "90"
+  QUOTA_THRESHOLD_WARNING: "80"
+  QUOTA_THRESHOLD_CRITICAL: "90"
+  QUOTA_THRESHOLD_REMEDIATE: "95"
+
   # Seed passwords (only used on first boot when DB is empty)
   SEED_PASSWORD_ADMIN: "Admin@CloudAI2026"
   SEED_PASSWORD_OPERATOR: "Operator@CloudAI2026"

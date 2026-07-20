@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     REMEDIATION_VM_RECOVERY_ACTION: str = "hard_reboot"  # hard_reboot | stop | live_migrate
     REMEDIATION_K8S_SAFE_NAMESPACES: str = "default"
 
+    # Soft Quota (percentage of actual sandbox quota to use as operating limit)
+    SOFT_QUOTA_CPU_PERCENT: int = 90
+    SOFT_QUOTA_RAM_PERCENT: int = 90
+    QUOTA_THRESHOLD_WARNING: int = 80
+    QUOTA_THRESHOLD_CRITICAL: int = 90
+    QUOTA_THRESHOLD_REMEDIATE: int = 95
+
     # Production settings
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: str = ""
