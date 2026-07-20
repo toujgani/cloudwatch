@@ -7,7 +7,6 @@ const links = [
   { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin'] },
   { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
   { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin'] },
-  { to: '/grafana', icon: 'GRF', label: 'Visualisations', roles: ['admin', 'viewer'] },
   { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'viewer'] },
   { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin'] },
   { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin'] },

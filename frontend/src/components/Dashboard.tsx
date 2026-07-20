@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary, getPods } from '../api/client'
-import type { DashboardStats, VM, Alert, ReportSummary, Pod } from '../types'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts'
+import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary, getPods, getGrafanaVisualizations } from '../api/client'
+import type { DashboardStats, VM, Alert, ReportSummary, Pod, GrafanaVisualizationResponse } from '../types'
 
 const SEV_COLOR: Record<string, string> = {
   critical: 'var(--red)', warning: 'var(--yellow)', info: 'var(--blue2)',
@@ -36,11 +36,13 @@ export default function Dashboard() {
   const [hours, setHours]   = useState(24)
   const [finance, setFinance] = useState<ReportSummary['financial'] | null>(null)
   const [pods, setPods]     = useState<Pod[]>([])
+  const [grafana, setGrafana] = useState<GrafanaVisualizationResponse | null>(null)
 
   const load = async () => {
-    const [s, v, a, r, p] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours), getPods()])
+    const [s, v, a, r, p, g] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours), getPods(), getGrafanaVisualizations(hours)])
     setStats(s); setVMs(v); setAlerts(a.slice(0, 6)); setPods(p)
     if (r?.financial) setFinance(r.financial)
+    if (g) setGrafana(g)
 
     // Build CPU chart from first VM metrics
     if (v.length > 0) {
@@ -127,6 +129,65 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Grafana Metrics — Compact Visualization */}
+      {grafana && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {/* Gauges */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Performance temps réel</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+              {[
+                { label: 'CPU', value: Math.round(grafana.latest?.cpu || 0), color: '#22c55e' },
+                { label: 'RAM', value: Math.round(grafana.latest?.memory || 0), color: '#2563eb' },
+                { label: 'Disk', value: Math.round(grafana.latest?.disk || 0), color: '#f59e0b' },
+              ].map(g => (
+                <div key={g.label} style={{ textAlign: 'center' }}>
+                  <ResponsiveContainer width="100%" height={70}>
+                    <RadialBarChart cx="50%" cy="76%" innerRadius="72%" outerRadius="100%" startAngle={180} endAngle={0} data={[{ value: g.value, fill: g.color }]}>
+                      <RadialBar dataKey="value" cornerRadius={8} background={{ fill: '#eef2f7' }} />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                  <div style={{ marginTop: -28, fontSize: 18, fontWeight: 800 }}>{g.value}%</div>
+                  <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{g.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Memory Area Chart */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Mémoire — Tendance</div>
+            <ResponsiveContainer width="100%" height={120}>
+              <AreaChart data={(grafana.series || []).map(p => ({ t: new Date(p.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), v: p.memory || 0 }))}>
+                <defs><linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="100%" stopColor="#f97316" stopOpacity={0.02} /></linearGradient></defs>
+                <CartesianGrid stroke="rgba(99,130,255,0.06)" />
+                <XAxis dataKey="t" tick={{ fill: 'var(--text3)', fontSize: 9 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: 'var(--text3)', fontSize: 9 }} domain={[0, 100]} />
+                <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border2)', fontSize: 11 }} />
+                <Area type="monotone" dataKey="v" stroke="#ea580c" strokeWidth={2} fill="url(#memGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Network + Containers Stats */}
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Infrastructure</div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {[
+                { label: 'Containers', value: Math.round(grafana.latest?.containers || 0), color: 'var(--green)' },
+                { label: 'Network In', value: `${Math.round(grafana.latest?.network_in || 0)} MB/s`, color: 'var(--blue2)' },
+                { label: 'Network Out', value: `${Math.round(grafana.latest?.network_out || 0)} MB/s`, color: 'var(--teal2)' },
+              ].map(s => (
+                <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg3)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>{s.label}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: s.color }}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Utilization — Resource Usage Summary */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
@@ -231,6 +292,38 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Financial — AI Cost Savings Breakdown */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginTop: 20 }}>
+        <div style={{ fontWeight: 600, marginBottom: 14 }}>💰 Impact financier de l'IA — Économies automatisées</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Coût infra mensuel</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>{finance?.monthly_infra_cost?.toLocaleString() ?? '10 000'}€</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Taux automation</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--blue2)' }}>{finance ? `${(finance.automation_savings_rate * 100).toFixed(0)}%` : '12%'}</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Économies période</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>{finance?.estimated_period_savings?.toFixed(0) ?? '—'}€</div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{finance?.resolved_alerts ?? 0} alertes résolues par l'IA</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>ROI automatisation</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: finance && finance.roi_percent > 0 ? 'var(--green)' : 'var(--red)' }}>
+              {finance?.roi_percent?.toFixed(1) ?? '—'}%
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
+              {finance && finance.roi_percent > 0 ? '↑ rentable' : 'en attente'}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 6, background: 'rgba(26,188,156,0.06)', border: '1px solid rgba(26,188,156,0.15)', fontSize: 11, color: 'var(--text2)' }}>
+          📊 Calcul: <strong>{finance?.monthly_infra_cost?.toLocaleString() ?? '10000'}€/mois</strong> × <strong>{finance ? (finance.automation_savings_rate * 100).toFixed(0) : '12'}%</strong> taux d'automatisation × ({finance?.resolved_alerts ?? 0} alertes résolues / période) = <strong style={{ color: 'var(--green)' }}>{finance?.estimated_period_savings?.toFixed(0) ?? '—'}€ économisés</strong>
         </div>
       </div>
     </div>
