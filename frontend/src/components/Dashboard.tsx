@@ -131,7 +131,7 @@ export default function Dashboard() {
       {/* Utilization — Resource Usage Summary */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontWeight: 600 }}>📊 Utilisation des ressources</div>
+          <div style={{ fontWeight: 600 }}>Utilisation des ressources</div>
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Namespace: red1intheocean-dev</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>

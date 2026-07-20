@@ -166,11 +166,11 @@ export default function AIOpsPage() {
                 setStressBusy(false)
               }}
               style={{ fontSize: 12 }}>
-              {stressBusy ? '⏳ Déploiement...' : '🔥 Lancer le stress test'}
+              {stressBusy ? 'Déploiement...' : 'Lancer le stress test'}
             </button>
             <button className="btn" onClick={async () => {
               try { await cleanupStressTest(); setStressResult('Nettoyage effectué.') } catch {}
-            }} style={{ fontSize: 12 }}>🧹 Cleanup</button>
+            }} style={{ fontSize: 12 }}>Cleanup</button>
           </div>
         </div>
         {stressResult && (
