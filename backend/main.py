@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -163,7 +164,7 @@ def health():
 @app.get("/api/test-email")
 def test_email():
     """Send a test email to verify SMTP configuration works."""
-    from .email_notifications import _send_email, email_alerts_configured
+    from .email_notifications import _send_smtp, email_alerts_configured
     from .config import settings
 
     if not email_alerts_configured():
@@ -177,14 +178,13 @@ def test_email():
             "ALERT_EMAIL_TO": settings.ALERT_EMAIL_TO or "(empty)",
         }
 
-    try:
-        _send_email(
-            "[Cloud AI Monitor] Test Email",
-            "Ceci est un test. Si vous recevez ce message, la configuration SMTP fonctionne correctement."
-        )
+    success = _send_smtp(
+        "[Cloud AI Monitor] Test SMTP",
+        "Ceci est un test automatique.\n\nSi vous recevez ce message, la configuration SMTP fonctionne correctement.\n\nTimestamp: " + datetime.utcnow().isoformat() + "Z"
+    )
+    if success:
         return {"status": "sent", "to": settings.ALERT_EMAIL_TO}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    return {"status": "failed", "message": "Check server logs for SMTP error details."}
 
 
 @app.get("/api/dashboard/stats")

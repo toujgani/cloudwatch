@@ -447,12 +447,8 @@ def ai_resolve_all(db: Session = Depends(get_db)):
     db.commit()
 
     # 4. Send email summary if email is configured
-    from ..email_notifications import _send_email, email_alerts_configured
-    if email_alerts_configured() and resolved_count > 0:
-        _send_email(
-            f"[Cloud AI Monitor] Tout resoudre — {resolved_count} alertes resolues",
-            f"Resolve-All execute.\n\nAlertes resolues: {resolved_count}\nEchecs: {failed_count}\nQuota: {quota_status.level}\nCPU: {quota_status.cpu_usage_percent}%\nRAM: {quota_status.ram_usage_percent}%\n\nTimestamp: {datetime.utcnow().isoformat()}Z"
-        )
+    from ..email_notifications import send_resolve_all_email
+    send_resolve_all_email(resolved_count, failed_count, quota_status.level)
 
     # 5. Return summary
     return {
@@ -633,6 +629,10 @@ def cleanup_stress_test(db: Session = Depends(get_db)):
         errors.append(f"Pod scan: {e}")
 
     db.commit()
+
+    # Send cleanup report email
+    from ..email_notifications import send_cleanup_email
+    send_cleanup_email(deleted_deployments, deleted_pods, errors)
 
     return {
         "status": "cleaned",
