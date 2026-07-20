@@ -168,7 +168,12 @@ export default function AIOpsPage() {
               {stressBusy ? 'Deploiement...' : 'Lancer le stress test'}
             </button>
             <button className="btn" onClick={async () => {
-              try { await cleanupStressTest(); setStressResult('Nettoyage effectue.') } catch {}
+              setStressBusy(true)
+              try {
+                const res = await cleanupStressTest()
+                setStressResult(res.message || `Nettoyage: ${res.total_removed || 0} ressources supprimees.`)
+              } catch (e: any) { setStressResult('Erreur: ' + (e?.response?.data?.detail || e.message)) }
+              setStressBusy(false)
             }} style={{ fontSize: 12 }}>Nettoyer</button>
           </div>
         </div>

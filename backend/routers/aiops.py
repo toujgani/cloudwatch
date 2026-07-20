@@ -544,13 +544,80 @@ def deploy_stress_test(payload: StressTestIn):
 
 
 @router.delete("/chaos/cleanup")
-def cleanup_stress_test():
-    """Remove the stress-test deployment."""
+def cleanup_stress_test(db: Session = Depends(get_db)):
+    """
+    Intelligent namespace cleanup.
+    Scans live Kubernetes, identifies deletable resources, removes them.
+    Never touches protected deployments (cloud-ai-monitor, postgresql).
+    Returns detailed summary of what was cleaned.
+    """
     from .. import openshift_client as k8s
+    from ..models import Pod as PodModel, PodMetric as PodMetricModel
 
-    path = "/apis/apps/v1/namespaces/red1intheocean-dev/deployments/stress-test"
-    resp = k8s._session().delete(k8s._url(path), timeout=10)
+    PROTECTED = ["cloud-ai-monitor", "postgresql"]
+    namespace = "red1intheocean-dev"
 
-    if resp.status_code in (200, 202, 404):
-        return {"status": "cleaned", "message": "Stress test deployment removed."}
-    return {"status": "error", "code": resp.status_code, "message": resp.text[:300]}
+    deleted_pods = []
+    deleted_deployments = []
+    errors = []
+
+    # 1. Delete stress-test deployments
+    try:
+        s = k8s._session()
+        deploy_path = f"/apis/apps/v1/namespaces/{namespace}/deployments"
+        resp = s.get(k8s._url(deploy_path), timeout=15)
+        if resp.status_code == 200:
+            for deploy in resp.json().get("items", []):
+                name = deploy.get("metadata", {}).get("name", "")
+                if "stress" in name and not any(p in name for p in PROTECTED):
+                    del_resp = s.delete(k8s._url(f"{deploy_path}/{name}"), timeout=10)
+                    if del_resp.status_code in (200, 202):
+                        deleted_deployments.append(name)
+    except Exception as e:
+        errors.append(f"Deployment scan: {e}")
+
+    # 2. Delete stress/completed/failed pods directly
+    try:
+        pods_path = f"/api/v1/namespaces/{namespace}/pods"
+        resp = k8s._session().get(k8s._url(pods_path), timeout=15)
+        if resp.status_code == 200:
+            for pod_item in resp.json().get("items", []):
+                pod_name = pod_item.get("metadata", {}).get("name", "")
+                labels = pod_item.get("metadata", {}).get("labels", {})
+                phase = pod_item.get("status", {}).get("phase", "")
+                app_label = labels.get("app", "")
+
+                # Skip protected
+                if any(p in pod_name or p in app_label for p in PROTECTED):
+                    continue
+
+                # Delete if: stress-test, Failed, Succeeded, or Evicted
+                should_delete = (
+                    "stress" in pod_name or "stress" in app_label
+                    or phase in ("Failed", "Succeeded")
+                    or pod_item.get("status", {}).get("reason") == "Evicted"
+                )
+
+                if should_delete:
+                    del_resp = k8s._session().delete(k8s._url(f"{pods_path}/{pod_name}"), timeout=10)
+                    if del_resp.status_code in (200, 202):
+                        deleted_pods.append(pod_name)
+                        # Also clean from database
+                        pod_id = f"{namespace}/{pod_name}"
+                        db_pod = db.get(PodModel, pod_id)
+                        if db_pod:
+                            db.query(PodMetricModel).filter(PodMetricModel.pod_id == pod_id).delete()
+                            db.delete(db_pod)
+    except Exception as e:
+        errors.append(f"Pod scan: {e}")
+
+    db.commit()
+
+    return {
+        "status": "cleaned",
+        "deleted_deployments": deleted_deployments,
+        "deleted_pods": deleted_pods,
+        "total_removed": len(deleted_deployments) + len(deleted_pods),
+        "errors": errors if errors else None,
+        "message": f"Nettoyage termine: {len(deleted_deployments)} deployments, {len(deleted_pods)} pods supprimes.",
+    }

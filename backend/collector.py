@@ -76,7 +76,13 @@ def collect_openstack(db: Session):
 # ─── OpenShift Collect ────────────────────────────────────────────────────────
 
 def collect_openshift(db: Session):
-    """Collect pods from real OpenShift. If unreachable, skip silently."""
+    """
+    Collect pods from real OpenShift with FULL RECONCILIATION.
+    - Inserts new pods
+    - Updates existing pods
+    - DELETES pods from database that no longer exist in Kubernetes
+    This ensures the database is always in sync with the live cluster state.
+    """
     logger.info("[Collector] OpenShift — attempting real connection")
     try:
         namespace = settings.KUBE_NAMESPACE or ""
@@ -92,8 +98,12 @@ def collect_openshift(db: Session):
         logger.warning("[Collector] OpenShift metrics unavailable — using pods without CPU/RAM. (%s)", e)
         metrics = {}
 
+    # Track which pod IDs we see from the live API
+    live_pod_ids: set[str] = set()
+
     for item in pods:
         data = k8s_client.parse_pod(item, metrics)
+        live_pod_ids.add(data["id"])
 
         pod = db.get(Pod, data["id"])
         if pod is None:
@@ -118,8 +128,21 @@ def collect_openshift(db: Session):
         db.add(m)
         alert_engine.evaluate_pod(db, pod, data["restart_count"])
 
+    # ── RECONCILIATION: Remove pods from DB that no longer exist in Kubernetes ──
+    db_pods = db.query(Pod).all()
+    stale_pods = [p for p in db_pods if p.id not in live_pod_ids]
+
+    if stale_pods:
+        stale_count = len(stale_pods)
+        for stale_pod in stale_pods:
+            # Delete associated metrics first (cascade might handle this but be explicit)
+            db.query(PodMetric).filter(PodMetric.pod_id == stale_pod.id).delete()
+            db.delete(stale_pod)
+        logger.info("[Collector] Reconciliation — removed %d stale pods from database", stale_count)
+
     db.commit()
-    logger.info("[Collector] OpenShift — done (%d pods)", len(pods))
+    logger.info("[Collector] OpenShift — done (%d live pods, %d stale removed)",
+                len(live_pod_ids), len(stale_pods))
 
 
 # ─── Namespace Quota Check ────────────────────────────────────────────────────

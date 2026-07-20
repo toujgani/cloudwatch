@@ -92,11 +92,38 @@ def get_pod_metrics(
 
 @router.delete("/{pod_id:path}")
 def delete_pod_endpoint(pod_id: str, db: Session = Depends(get_db)):
-    """Delete a pod via the Kubernetes API. The deployment controller will recreate it if applicable."""
+    """
+    Delete a pod via the Kubernetes API.
+    If the pod no longer exists (404), remove it from the database anyway.
+    This handles stale entries gracefully.
+    """
     from .. import openshift_client
+    from ..models import PodMetric as PodMetricModel
+
+    # Try to delete from Kubernetes
+    k8s_success = False
+    k8s_gone = False
     try:
         openshift_client.delete_pod(pod_id)
-        return {"status": "deleted", "pod_id": pod_id, "message": f"Pod {pod_id} supprime avec succes."}
+        k8s_success = True
     except Exception as e:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression du pod: {e}")
+        error_str = str(e)
+        # If 404, pod doesn't exist in K8s anymore — that's fine, just clean DB
+        if "404" in error_str or "Not Found" in error_str:
+            k8s_gone = True
+        else:
+            # Real error (permission, network, etc.)
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail=f"Erreur Kubernetes: {error_str}")
+
+    # Always clean from database
+    db_pod = db.get(Pod, pod_id)
+    if db_pod:
+        db.query(PodMetricModel).filter(PodMetricModel.pod_id == pod_id).delete()
+        db.delete(db_pod)
+        db.commit()
+
+    if k8s_success:
+        return {"status": "deleted", "pod_id": pod_id, "message": f"Pod {pod_id} supprime de Kubernetes et de la base."}
+    elif k8s_gone:
+        return {"status": "cleaned", "pod_id": pod_id, "message": f"Pod {pod_id} n'existait plus dans Kubernetes. Entree base de donnees nettoyee."}
