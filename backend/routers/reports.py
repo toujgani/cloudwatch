@@ -33,7 +33,7 @@ def _csv_response(filename: str, rows: list[dict]):
 
 
 @router.get("/summary")
-def summary(hours: int = Query(default=24, ge=1, le=720), db: Session = Depends(get_db)):
+def summary(hours: int = Query(default=24, ge=1, le=87600), db: Session = Depends(get_db)):
     since = datetime.utcnow() - timedelta(hours=hours)
 
     vm_metrics = db.query(VMMetric).filter(VMMetric.collected_at >= since).all()

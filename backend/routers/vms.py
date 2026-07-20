@@ -90,7 +90,7 @@ def get_vm(vm_id: str, db: Session = Depends(get_db)):
 @router.get("/{vm_id}/metrics", response_model=list[MetricPoint])
 def get_vm_metrics(
     vm_id: str,
-    hours: int = Query(default=24, ge=1, le=168),
+    hours: int = Query(default=24, ge=1, le=87600),
     db: Session = Depends(get_db),
 ):
     """Historique des métriques d'une VM sur N heures (défaut: 24h)."""

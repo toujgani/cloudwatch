@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary } from '../api/client'
-import type { DashboardStats, VM, Alert, ReportSummary } from '../types'
+import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary, getPods } from '../api/client'
+import type { DashboardStats, VM, Alert, ReportSummary, Pod } from '../types'
 
 const SEV_COLOR: Record<string, string> = {
   critical: 'var(--red)', warning: 'var(--yellow)', info: 'var(--blue2)',
@@ -35,10 +35,11 @@ export default function Dashboard() {
   const [chart, setChart]   = useState<{ time: string; avg: number }[]>([])
   const [hours, setHours]   = useState(24)
   const [finance, setFinance] = useState<ReportSummary['financial'] | null>(null)
+  const [pods, setPods]     = useState<Pod[]>([])
 
   const load = async () => {
-    const [s, v, a, r] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours)])
-    setStats(s); setVMs(v); setAlerts(a.slice(0, 6))
+    const [s, v, a, r, p] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours), getPods()])
+    setStats(s); setVMs(v); setAlerts(a.slice(0, 6)); setPods(p)
     if (r?.financial) setFinance(r.financial)
 
     // Build CPU chart from first VM metrics
@@ -134,44 +135,29 @@ export default function Dashboard() {
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Namespace: red1intheocean-dev</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>CPU Total (pods)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--blue2)' }}>
-              {stats?.pods.total ? `${(stats.pods.running * 5).toFixed(0)}m` : '—'}
-            </div>
-            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
-              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.running ?? 0) * 5, 100)}%` }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 3000m alloue</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Memoire (pods)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--teal2)' }}>
-              {stats?.pods.total ? `${(stats.pods.running * 200).toFixed(0)} Mi` : '—'}
-            </div>
-            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
-              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.running ?? 0) * 200 / 30000 * 100, 100)}%` }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 30Gi alloue</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Stockage (PVC)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--yellow)' }}>2 Gi</div>
-            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
-              <div className="progress-fill fill-ok" style={{ width: '2.5%' }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 80Gi quota</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Pods actifs</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--green)' }}>
-              {stats?.pods.total ?? '—'}
-            </div>
-            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
-              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.total ?? 0) * 10, 100)}%` }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>capacite disponible</div>
-          </div>
+          {(() => {
+            const totalCpu = pods.reduce((sum, p) => sum + (p.cpu_millicores ?? 0), 0)
+            const totalRam = pods.reduce((sum, p) => sum + (p.ram_mb ?? 0), 0)
+            const cpuQuota = 3000 // from ResourceQuota
+            const ramQuota = 30 * 1024 // 30Gi in MB
+            const storageUsed = 2 // 2Gi PVC
+            const storageQuota = 80
+            return [
+              { label: 'CPU Total', value: `${totalCpu.toFixed(0)}m`, pct: (totalCpu / cpuQuota) * 100, quota: `${cpuQuota}m quota`, color: 'var(--blue2)' },
+              { label: 'Mémoire', value: `${totalRam.toFixed(0)} Mi`, pct: (totalRam / ramQuota) * 100, quota: `${(ramQuota/1024).toFixed(0)} Gi quota`, color: 'var(--teal2)' },
+              { label: 'Stockage PVC', value: `${storageUsed} Gi`, pct: (storageUsed / storageQuota) * 100, quota: `${storageQuota} Gi quota`, color: 'var(--yellow)' },
+              { label: 'Pods actifs', value: `${pods.length}`, pct: Math.min(pods.length * 10, 100), quota: `capacité disponible`, color: 'var(--green)' },
+            ].map(item => (
+              <div key={item.label}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>{item.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: item.color }}>{item.value}</div>
+                <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
+                  <div className="progress-fill" style={{ width: `${Math.min(item.pct, 100)}%`, background: item.color }} />
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ {item.quota}</div>
+              </div>
+            ))
+          })()}
         </div>
       </div>
 
