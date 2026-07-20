@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary, getPods, getGrafanaVisualizations } from '../api/client'
 import type { DashboardStats, VM, Alert, ReportSummary, Pod, GrafanaVisualizationResponse } from '../types'
-
-const SEV_COLOR: Record<string, string> = {
-  critical: 'var(--red)', warning: 'var(--yellow)', info: 'var(--blue2)',
-}
 
 function KpiCard({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
   return (
@@ -36,13 +32,23 @@ export default function Dashboard() {
   const [hours, setHours]   = useState(24)
   const [finance, setFinance] = useState<ReportSummary['financial'] | null>(null)
   const [pods, setPods]     = useState<Pod[]>([])
+  const [costTimeline, setCostTimeline] = useState<{time: string; cost: number}[]>([])
   const [grafana, setGrafana] = useState<GrafanaVisualizationResponse | null>(null)
 
   const load = async () => {
-    const [s, v, a, r, p, g] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours), getPods(), getGrafanaVisualizations(hours)])
+    const [s, v, a, r, p] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours), getPods()])
     setStats(s); setVMs(v); setAlerts(a.slice(0, 6)); setPods(p)
     if (r?.financial) setFinance(r.financial)
-    if (g) setGrafana(g)
+    // Load cost timeline + grafana
+    try {
+      const costRes = await fetch('/api/costs/timeline?hours=' + hours, { headers: { Authorization: `Bearer ${localStorage.getItem('cloudwatch-token') || ''}` } })
+      const costData = await costRes.json()
+      setCostTimeline((costData.timeline || []).map((p: any) => ({
+        time: p.time ? new Date(p.time).toLocaleDateString('fr-FR', { day: '2-digit', hour: '2-digit' }) : '',
+        cost: p.cost * 100,
+      })))
+    } catch {}
+    try { setGrafana(await getGrafanaVisualizations(hours)) } catch {}
 
     // Build CPU chart from first VM metrics
     if (v.length > 0) {
@@ -130,64 +136,105 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Grafana Metrics — Compact Visualization */}
+      {/* Grafana Performance (plug-and-play: shows data until real Grafana connected) */}
       {grafana && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
-          {/* Gauges */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Performance temps réel</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr', gap: 12, marginBottom: 20 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 14 }}>Performance temps reel</div>
+            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
               {[
                 { label: 'CPU', value: Math.round(grafana.latest?.cpu || 0), color: '#22c55e' },
                 { label: 'RAM', value: Math.round(grafana.latest?.memory || 0), color: '#2563eb' },
                 { label: 'Disk', value: Math.round(grafana.latest?.disk || 0), color: '#f59e0b' },
               ].map(g => (
                 <div key={g.label} style={{ textAlign: 'center' }}>
-                  <ResponsiveContainer width="100%" height={70}>
-                    <RadialBarChart cx="50%" cy="76%" innerRadius="72%" outerRadius="100%" startAngle={180} endAngle={0} data={[{ value: g.value, fill: g.color }]}>
-                      <RadialBar dataKey="value" cornerRadius={8} background={{ fill: '#eef2f7' }} />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                  <div style={{ marginTop: -28, fontSize: 18, fontWeight: 800 }}>{g.value}%</div>
-                  <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{g.label}</div>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', border: `5px solid ${g.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{g.value}%</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{g.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Memory Area Chart */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Mémoire — Tendance</div>
-            <ResponsiveContainer width="100%" height={120}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Memoire — Tendance</div>
+            <ResponsiveContainer width="100%" height={130}>
               <AreaChart data={(grafana.series || []).map(p => ({ t: new Date(p.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), v: p.memory || 0 }))}>
-                <defs><linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="100%" stopColor="#f97316" stopOpacity={0.02} /></linearGradient></defs>
                 <CartesianGrid stroke="rgba(99,130,255,0.06)" />
                 <XAxis dataKey="t" tick={{ fill: 'var(--text3)', fontSize: 9 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fill: 'var(--text3)', fontSize: 9 }} domain={[0, 100]} />
                 <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border2)', fontSize: 11 }} />
-                <Area type="monotone" dataKey="v" stroke="#ea580c" strokeWidth={2} fill="url(#memGrad)" />
+                <Area type="monotone" dataKey="v" stroke="#ea580c" strokeWidth={2} fill="rgba(234,88,12,0.1)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Network + Containers Stats */}
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
             <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Infrastructure</div>
             <div style={{ display: 'grid', gap: 10 }}>
               {[
-                { label: 'Containers', value: Math.round(grafana.latest?.containers || 0), color: 'var(--green)' },
+                { label: 'Containers', value: String(Math.round(grafana.latest?.containers || 0)), color: 'var(--green)' },
                 { label: 'Network In', value: `${Math.round(grafana.latest?.network_in || 0)} MB/s`, color: 'var(--blue2)' },
                 { label: 'Network Out', value: `${Math.round(grafana.latest?.network_out || 0)} MB/s`, color: 'var(--teal2)' },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg3)' }}>
                   <span style={{ fontSize: 11, color: 'var(--text2)' }}>{s.label}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: s.color }}>{s.value}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
       )}
+
+      {/* Cost trend + Utilization */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        {/* Cost over time mini chart */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Cout infrastructure (centimes/heure)</div>
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart data={costTimeline}>
+              <CartesianGrid stroke="rgba(99,130,255,0.06)" />
+              <XAxis dataKey="time" tick={{ fill: 'var(--text3)', fontSize: 9 }} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: 'var(--text3)', fontSize: 9 }} />
+              <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border2)', fontSize: 11 }} />
+              <Area type="monotone" dataKey="cost" stroke="var(--red)" strokeWidth={2} fill="rgba(255,77,109,0.1)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Savings summary */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10 }}>Impact financier IA</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase' }}>Economies</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--green)', marginTop: 4 }}>
+                {finance ? `${finance.estimated_period_savings.toFixed(0)}€` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase' }}>ROI</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--green)', marginTop: 4 }}>
+                {finance ? `${finance.roi_percent.toFixed(0)}%` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase' }}>Alertes resolues</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--blue2)', marginTop: 4 }}>
+                {finance?.resolved_alerts ?? 0}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase' }}>Cout infra/mois</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--yellow)', marginTop: 4 }}>
+                {finance ? `${finance.monthly_infra_cost.toLocaleString()}€` : '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Utilization — Resource Usage Summary */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
@@ -270,9 +317,9 @@ export default function Dashboard() {
 
         {/* Alerts */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>🔔 Alertes actives</div>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Alertes actives</div>
           <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {alerts.length === 0 && <div style={{ color: 'var(--text3)', fontSize: 12, textAlign: 'center', padding: 20 }}>✅ Aucune alerte active</div>}
+            {alerts.length === 0 && <div style={{ color: 'var(--text3)', fontSize: 12, textAlign: 'center', padding: 20 }}>Aucune alerte active</div>}
             {alerts.map(a => (
               <div key={a.id} style={{
                 padding: '10px 12px', borderRadius: 8, border: '1px solid',
@@ -280,7 +327,9 @@ export default function Dashboard() {
                 borderColor: a.severity === 'critical' ? 'rgba(255,77,109,0.2)' : a.severity === 'warning' ? 'rgba(255,209,102,0.2)' : 'rgba(79,127,255,0.2)',
               }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 15 }}>{a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '⚠️' : '🔵'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: a.severity === 'critical' ? 'var(--red)' : a.severity === 'warning' ? 'var(--yellow)' : 'var(--blue2)' }}>
+                    {a.severity.toUpperCase()}
+                  </span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{a.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--text2)' }}>{a.description}</div>
@@ -292,38 +341,6 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Financial — AI Cost Savings Breakdown */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginTop: 20 }}>
-        <div style={{ fontWeight: 600, marginBottom: 14 }}>💰 Impact financier de l'IA — Économies automatisées</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Coût infra mensuel</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>{finance?.monthly_infra_cost?.toLocaleString() ?? '10 000'}€</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Taux automation</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--blue2)' }}>{finance ? `${(finance.automation_savings_rate * 100).toFixed(0)}%` : '12%'}</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>Économies période</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>{finance?.estimated_period_savings?.toFixed(0) ?? '—'}€</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{finance?.resolved_alerts ?? 0} alertes résolues par l'IA</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 6 }}>ROI automatisation</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: finance && finance.roi_percent > 0 ? 'var(--green)' : 'var(--red)' }}>
-              {finance?.roi_percent?.toFixed(1) ?? '—'}%
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-              {finance && finance.roi_percent > 0 ? '↑ rentable' : 'en attente'}
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 6, background: 'rgba(26,188,156,0.06)', border: '1px solid rgba(26,188,156,0.15)', fontSize: 11, color: 'var(--text2)' }}>
-          📊 Calcul: <strong>{finance?.monthly_infra_cost?.toLocaleString() ?? '10000'}€/mois</strong> × <strong>{finance ? (finance.automation_savings_rate * 100).toFixed(0) : '12'}%</strong> taux d'automatisation × ({finance?.resolved_alerts ?? 0} alertes résolues / période) = <strong style={{ color: 'var(--green)' }}>{finance?.estimated_period_savings?.toFixed(0) ?? '—'}€ économisés</strong>
         </div>
       </div>
     </div>

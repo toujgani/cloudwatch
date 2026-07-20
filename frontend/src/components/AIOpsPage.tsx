@@ -124,10 +124,9 @@ export default function AIOpsPage() {
       {/* Chaos Engineering — Stress Test */}
       <div className="panel" style={{ padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(255,77,109,0.2)', background: 'rgba(255,77,109,0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <span style={{ fontSize: 18 }}>⚡</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Chaos Engineering — Test de résilience</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)' }}>Déploie un pod qui sature CPU/RAM → l'IA détecte et remédie automatiquement</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Chaos Engineering — Test de resilience</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>Deploie un pod qui sature CPU/RAM — l'IA detecte et remedie automatiquement</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -166,11 +165,11 @@ export default function AIOpsPage() {
                 setStressBusy(false)
               }}
               style={{ fontSize: 12 }}>
-              {stressBusy ? 'Déploiement...' : 'Lancer le stress test'}
+              {stressBusy ? 'Deploiement...' : 'Lancer le stress test'}
             </button>
             <button className="btn" onClick={async () => {
-              try { await cleanupStressTest(); setStressResult('Nettoyage effectué.') } catch {}
-            }} style={{ fontSize: 12 }}>Cleanup</button>
+              try { await cleanupStressTest(); setStressResult('Nettoyage effectue.') } catch {}
+            }} style={{ fontSize: 12 }}>Nettoyer</button>
           </div>
         </div>
         {stressResult && (

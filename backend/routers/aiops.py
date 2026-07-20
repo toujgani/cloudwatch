@@ -387,7 +387,7 @@ def deploy_stress_test(payload: StressTestIn):
 
     # Build stress command based on intensity
     cpu_workers = {"low": "1", "medium": "2", "high": "4"}[payload.intensity]
-    ram_bytes = {"low": "64M", "medium": "150M", "high": "220M"}[payload.intensity]
+    ram_bytes = {"low": "200M", "medium": "300M", "high": "400M"}[payload.intensity]
 
     if payload.mode == "cpu":
         args = ["--cpu", cpu_workers, "--timeout", str(payload.duration_seconds)]
@@ -395,6 +395,10 @@ def deploy_stress_test(payload: StressTestIn):
         args = ["--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
     else:
         args = ["--cpu", cpu_workers, "--vm", "1", "--vm-bytes", ram_bytes, "--timeout", str(payload.duration_seconds)]
+
+    # Build the deployment manifest
+    # Key: memory limit is LOWER than what stress requests → pod gets OOMKilled → CrashLoopBackOff → AI detects
+    mem_limit = {"low": "128Mi", "medium": "128Mi", "high": "128Mi"}[payload.intensity]
 
     # Build the deployment manifest
     manifest = {
@@ -418,7 +422,7 @@ def deploy_stress_test(payload: StressTestIn):
                         "args": args,
                         "resources": {
                             "requests": {"memory": "64Mi", "cpu": "50m"},
-                            "limits": {"memory": "256Mi", "cpu": "500m"},
+                            "limits": {"memory": mem_limit, "cpu": "500m"},
                         },
                     }],
                 },

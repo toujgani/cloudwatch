@@ -8,6 +8,7 @@ const links = [
   { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
   { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin'] },
   { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'viewer'] },
+  { to: '/costs', icon: 'FIN', label: 'Couts & ROI', roles: ['admin', 'viewer'] },
   { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin'] },
   { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin'] },
   { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin'] },
