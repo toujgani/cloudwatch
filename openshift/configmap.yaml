@@ -21,7 +21,7 @@ data:
   KUBE_NAMESPACE: "red1intheocean-dev"
 
   # Collector
-  COLLECT_INTERVAL_SECONDS: "60"
+  COLLECT_INTERVAL_SECONDS: "30"
   MOCK_MODE: "false"
   MOCK_OPENSTACK: "false"
   MOCK_OPENSHIFT: "false"
