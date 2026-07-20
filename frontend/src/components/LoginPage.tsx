@@ -46,7 +46,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
       alignItems: 'center',
       justifyContent: 'center',
       padding: 24,
-      backgroundImage: `linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.55)), url(/tangermedlogo.jpg)`,
+      backgroundImage: `linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.55)), url(/tangermedbackground.jpg)`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
@@ -80,17 +80,6 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => vo
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#1a2030' }}>Cloud AI Monitor</div>
                 <div style={{ color: '#8a94a6', fontSize: 12 }}>CIRES Technologies — Tanger Med</div>
               </div>
-              <img
-                src="/tangermedlogo.jpg"
-                alt="Tanger Med"
-                style={{
-                  width: 50, height: 50, objectFit: 'contain',
-                  borderRadius: 10,
-                  border: '1px solid #e8ecf0',
-                  padding: 3,
-                  marginLeft: 'auto',
-                }}
-              />
             </div>
             <h2 style={{ fontSize: 24, lineHeight: 1.2, marginBottom: 8, color: '#1a2030' }}>
               Connexion sécurisée
