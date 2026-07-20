@@ -106,3 +106,8 @@ export const injectAnomaly      = (payload: object)       => api.post<AIOpsInjec
 export const simulateThresholds = (payload: object)       => api.post('/aiops/simulate/thresholds', payload).then(r => r.data)
 export const getAIOpsKnowledgeBase = ()                   => api.get<AIOpsKnowledgeEntry[]>('/aiops/knowledge-base').then(r => r.data)
 export const getAIOpsPipelineStatus = ()                  => api.get<AIOPSPipelineStatus>('/aiops/pipeline/status').then(r => r.data)
+
+// ── Chaos / Stress Test ──
+export const deployStressTest = (mode = 'both', intensity = 'medium', duration = 120) =>
+  api.post('/aiops/chaos/deploy-stress', { mode, intensity, duration_seconds: duration }).then(r => r.data)
+export const cleanupStressTest = () => api.delete('/aiops/chaos/cleanup').then(r => r.data)

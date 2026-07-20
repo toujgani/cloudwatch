@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [vms, setVMs]       = useState<VM[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [chart, setChart]   = useState<{ time: string; avg: number }[]>([])
+  const [hours, setHours]   = useState(24)
 
   const load = async () => {
     const [s, v, a] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active')])
@@ -40,7 +41,7 @@ export default function Dashboard() {
 
     // Build CPU chart from first VM metrics
     if (v.length > 0) {
-      const pts = await getVMMetrics(v[0].id, 24)
+      const pts = await getVMMetrics(v[0].id, hours)
       setChart(pts.map(p => ({
         time: new Date(p.collected_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         avg: p.cpu_percent ?? 0,
@@ -48,7 +49,7 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t) }, [])
+  useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t) }, [hours])
 
   const PIE_DATA = stats ? [
     { name: 'Running', value: stats.pods.running,                             color: 'var(--green)' },
@@ -58,6 +59,24 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: '20px 24px' }}>
+      {/* Time range selector */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14, gap: 6 }}>
+        {[
+          { label: '24h', value: 24 },
+          { label: '7j', value: 168 },
+          { label: '30j', value: 720 },
+          { label: '1 an', value: 8760 },
+          { label: 'Tout', value: 87600 },
+        ].map(opt => (
+          <button key={opt.value}
+            className={hours === opt.value ? 'btn btn-primary' : 'btn'}
+            onClick={() => setHours(opt.value)}
+            style={{ fontSize: 11, minHeight: 28, padding: '4px 12px' }}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         <KpiCard label="Machines virtuelles" value={stats?.vms.total ?? '—'} sub={`${stats?.vms.active ?? 0} actives`} color="var(--blue2)" />
@@ -69,7 +88,7 @@ export default function Dashboard() {
       {/* Charts row */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 20 }}>
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-          <div style={{ fontWeight: 600, marginBottom: 14 }}> CPU — Historique 24h</div>
+          <div style={{ fontWeight: 600, marginBottom: 14 }}> CPU — Historique {hours <= 24 ? '24h' : hours <= 168 ? '7 jours' : hours <= 720 ? '30 jours' : hours <= 8760 ? '1 an' : 'complet'}</div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chart}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,130,255,0.06)" />

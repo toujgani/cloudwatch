@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis } from 'recharts'
-import { simulateVector, injectAnomaly, getAIOpsKnowledgeBase, getAIOpsPipelineStatus, getAuditLogs } from '../api/client'
+import { simulateVector, injectAnomaly, getAIOpsKnowledgeBase, getAIOpsPipelineStatus, getAuditLogs, deployStressTest, cleanupStressTest } from '../api/client'
 import type { AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus, AuditLogEntry } from '../types'
 
 const DECISION_COLOR: Record<string, string> = {
@@ -36,6 +36,13 @@ export default function AIOpsPage() {
   const [kb, setKb]             = useState<AIOpsKnowledgeEntry[]>([])
   const [pipeline, setPipeline] = useState<AIOPSPipelineStatus | null>(null)
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([])
+
+  // Stress test state
+  const [stressMode, setStressMode] = useState<'cpu' | 'ram' | 'both'>('both')
+  const [stressIntensity, setStressIntensity] = useState<'low' | 'medium' | 'high'>('medium')
+  const [stressDuration, setStressDuration] = useState(120)
+  const [stressBusy, setStressBusy] = useState(false)
+  const [stressResult, setStressResult] = useState<string | null>(null)
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -113,6 +120,65 @@ export default function AIOpsPage() {
           ))}
         </div>
       )}
+
+      {/* Chaos Engineering — Stress Test */}
+      <div className="panel" style={{ padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(255,77,109,0.2)', background: 'rgba(255,77,109,0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <span style={{ fontSize: 18 }}>⚡</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Chaos Engineering — Test de résilience</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>Déploie un pod qui sature CPU/RAM → l'IA détecte et remédie automatiquement</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ fontSize: 10, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>MODE</label>
+            <select value={stressMode} onChange={e => setStressMode(e.target.value as any)}
+              style={{ background: 'var(--card)', border: '1px solid var(--border2)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
+              <option value="cpu">CPU seul</option>
+              <option value="ram">RAM seul</option>
+              <option value="both">CPU + RAM</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>INTENSITÉ</label>
+            <select value={stressIntensity} onChange={e => setStressIntensity(e.target.value as any)}
+              style={{ background: 'var(--card)', border: '1px solid var(--border2)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
+              <option value="low">Faible</option>
+              <option value="medium">Moyenne</option>
+              <option value="high">Élevée</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>DURÉE (s)</label>
+            <input type="number" min={30} max={300} value={stressDuration}
+              onChange={e => setStressDuration(parseInt(e.target.value) || 120)}
+              style={{ background: 'var(--card)', border: '1px solid var(--border2)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 12, width: 70 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button className="btn btn-primary" disabled={stressBusy}
+              onClick={async () => {
+                setStressBusy(true); setStressResult(null)
+                try {
+                  const res = await deployStressTest(stressMode, stressIntensity, stressDuration)
+                  setStressResult(res.message || 'Stress test déployé!')
+                } catch (e: any) { setStressResult('Erreur: ' + (e?.response?.data?.message || e.message)) }
+                setStressBusy(false)
+              }}
+              style={{ fontSize: 12 }}>
+              {stressBusy ? '⏳ Déploiement...' : '🔥 Lancer le stress test'}
+            </button>
+            <button className="btn" onClick={async () => {
+              try { await cleanupStressTest(); setStressResult('Nettoyage effectué.') } catch {}
+            }} style={{ fontSize: 12 }}>🧹 Cleanup</button>
+          </div>
+        </div>
+        {stressResult && (
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 6, background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', fontSize: 12, color: 'var(--text2)' }}>
+            {stressResult}
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         {/* Vector Sliders */}
