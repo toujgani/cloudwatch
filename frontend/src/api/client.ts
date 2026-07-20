@@ -79,6 +79,12 @@ export const remediateAlert     = (id: number, operator = 'AI-Agent', force = fa
   api.post<Alert>(`/alerts/${id}/remediate`, { operator, force }).then(r => r.data)
 export const remediateActiveAlerts = (operator = 'AI-Agent', force = false) =>
   api.post<Alert[]>('/alerts/agent/remediate-active', { operator, force }).then(r => r.data)
+
+// ── AIOps Resolve All (one-click fix everything) ──
+export const aiResolveAll = () => api.post('/aiops/resolve-all').then(r => r.data)
+
+// ── Pod management ──
+export const deletePod = (podId: string) => api.delete(`/pods/${encodeURIComponent(podId)}`).then(r => r.data)
 export const getGrafanaHealth   = ()                      => api.get('/observability/grafana/health').then(r => r.data)
 export const getInfraMetrics    = (hours = 1)             => api.get(`/observability/metrics/infra?hours=${hours}`).then(r => r.data)
 export const getGrafanaVisualizations = (hours = 24)      => api.get<GrafanaVisualizationResponse>(`/observability/visualizations/main?hours=${hours}`).then(r => r.data)

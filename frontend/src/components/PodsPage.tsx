@@ -1,17 +1,34 @@
 import { useEffect, useState } from 'react'
-import { getPods } from '../api/client'
+import { getPods, deletePod } from '../api/client'
 import type { Pod } from '../types'
 
 export default function PodsPage() {
   const [pods, setPods]           = useState<Pod[]>([])
   const [nsFilter, setNsFilter]   = useState('')
   const [search, setSearch]       = useState('')
+  const [deleting, setDeleting]   = useState<string | null>(null)
+
+  const loadPods = () => getPods().then(setPods)
 
   useEffect(() => {
-    getPods().then(setPods)
-    const t = setInterval(() => getPods().then(setPods), 30_000)
+    loadPods()
+    const t = setInterval(loadPods, 30_000)
     return () => clearInterval(t)
   }, [])
+
+  const handleDelete = async (podId: string, podName: string) => {
+    if (!window.confirm(`Supprimer le pod "${podName}" ?\nLe controller le recreera si un Deployment existe.`)) return
+    setDeleting(podId)
+    try {
+      await deletePod(podId)
+      alert(`Pod "${podName}" supprime avec succes.`)
+      loadPods()
+    } catch (e: any) {
+      alert(`Erreur: ${e?.response?.data?.detail || e.message}`)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const namespaces = [...new Set(pods.map(p => p.namespace))].sort()
 
@@ -77,7 +94,7 @@ export default function PodsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Nom','Namespace','Statut','Nœud','Restarts','CPU (m)','RAM (MB)'].map(h => (
+              {['Nom','Namespace','Statut','Noeud','Restarts','CPU (m)','RAM (MB)','Actions'].map(h => (
                 <th key={h} style={{ fontSize: 11, color: 'var(--text3)', padding: '10px 12px', textAlign: 'left', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{h}</th>
               ))}
             </tr>
@@ -101,10 +118,20 @@ export default function PodsPage() {
                 <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--blue2)' }}>
                   {pod.ram_mb != null ? pod.ram_mb.toFixed(0) : '—'}
                 </td>
+                <td style={{ padding: '10px 12px' }}>
+                  <button
+                    className="btn"
+                    disabled={deleting === pod.id}
+                    onClick={() => handleDelete(pod.id, pod.name)}
+                    style={{ fontSize: 10, padding: '4px 8px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                  >
+                    {deleting === pod.id ? '...' : 'Supprimer'}
+                  </button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>Aucun pod trouvé</td></tr>
+              <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>Aucun pod trouvé</td></tr>
             )}
           </tbody>
         </table>

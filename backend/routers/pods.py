@@ -88,3 +88,15 @@ def get_pod_metrics(
         .order_by(PodMetric.collected_at)
         .all()
     )
+
+
+@router.delete("/{pod_id:path}")
+def delete_pod_endpoint(pod_id: str, db: Session = Depends(get_db)):
+    """Delete a pod via the Kubernetes API. The deployment controller will recreate it if applicable."""
+    from .. import openshift_client
+    try:
+        openshift_client.delete_pod(pod_id)
+        return {"status": "deleted", "pod_id": pod_id, "message": f"Pod {pod_id} supprime avec succes."}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression du pod: {e}")

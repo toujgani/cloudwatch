@@ -71,6 +71,12 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser())
   const [wsSnapshot, setWsSnapshot] = useState<WsSnapshot | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   useEffect(() => {
     if (!user) return
@@ -160,6 +166,16 @@ export default function App() {
               }} />
               LIVE
             </div>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                background: 'var(--bg3)', border: '1px solid var(--border2)',
+                borderRadius: 8, padding: '5px 10px', fontSize: 11,
+                color: 'var(--text2)', cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              {darkMode ? 'Light' : 'Dark'}
+            </button>
             {wsSnapshot && (
               <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text2)' }}>
                 <span>VMs: <strong style={{ color: 'var(--blue2)' }}>{wsSnapshot.kpis.vms.active}/{wsSnapshot.kpis.vms.total}</strong></span>
