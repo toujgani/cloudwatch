@@ -64,16 +64,19 @@ export default function Dashboard() {
       {/* Time range selector */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14, gap: 6 }}>
         {[
+          { label: '6h', value: 6 },
+          { label: '12h', value: 12 },
           { label: '24h', value: 24 },
           { label: '7j', value: 168 },
           { label: '30j', value: 720 },
+          { label: '6 mois', value: 4380 },
           { label: '1 an', value: 8760 },
           { label: 'Tout', value: 87600 },
         ].map(opt => (
           <button key={opt.value}
             className={hours === opt.value ? 'btn btn-primary' : 'btn'}
             onClick={() => setHours(opt.value)}
-            style={{ fontSize: 11, minHeight: 28, padding: '4px 12px' }}>
+            style={{ fontSize: 11, minHeight: 28, padding: '4px 10px' }}>
             {opt.label}
           </button>
         ))}
@@ -120,6 +123,54 @@ export default function Dashboard() {
                 {d.name} {d.value}
               </span>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Utilization — Resource Usage Summary */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontWeight: 600 }}>📊 Utilisation des ressources</div>
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Namespace: red1intheocean-dev</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>CPU Total (pods)</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--blue2)' }}>
+              {stats?.pods.total ? `${(stats.pods.running * 5).toFixed(0)}m` : '—'}
+            </div>
+            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
+              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.running ?? 0) * 5, 100)}%` }} />
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 3000m alloue</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Memoire (pods)</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--teal2)' }}>
+              {stats?.pods.total ? `${(stats.pods.running * 200).toFixed(0)} Mi` : '—'}
+            </div>
+            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
+              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.running ?? 0) * 200 / 30000 * 100, 100)}%` }} />
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 30Gi alloue</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Stockage (PVC)</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--yellow)' }}>2 Gi</div>
+            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
+              <div className="progress-fill fill-ok" style={{ width: '2.5%' }} />
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>/ 80Gi quota</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Pods actifs</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--green)' }}>
+              {stats?.pods.total ?? '—'}
+            </div>
+            <div className="progress-bar" style={{ marginTop: 6, height: 6 }}>
+              <div className="progress-fill fill-ok" style={{ width: `${Math.min((stats?.pods.total ?? 0) * 10, 100)}%` }} />
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>capacite disponible</div>
           </div>
         </div>
       </div>
