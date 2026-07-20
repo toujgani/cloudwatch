@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: cloud-ai-monitor
-          image: ghcr.io/red1intheocean/cloud-ai-monitor:latest
+          image: ghcr.io/toujgani/cloud-ai-monitor:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
