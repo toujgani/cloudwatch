@@ -95,9 +95,9 @@ export default function AIOpsPage() {
   return (
     <div style={{ padding: '20px 24px' }}>
       <div style={{ marginBottom: 18 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>AIOps Engine — Simulateur interactif</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>AIOps Engine — Résilience & Intelligence Artificielle</h2>
         <div style={{ color: 'var(--text3)', fontSize: 12 }}>
-          Architecture D · Anomaly Vector A = [m, l, t] · Modèle de decay dynamique · Pipeline temps réel
+          Chaos Engineering · Stress Test automatisé · Anomaly Vector A = [m, l, t] · Pipeline temps réel
         </div>
       </div>
 

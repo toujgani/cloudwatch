@@ -38,7 +38,7 @@ data:
   SMTP_PORT: "587"
   SMTP_USERNAME: "farouktoujgani@gmail.com"
   SMTP_FROM: "Cloud AI Monitor <farouktoujgani@gmail.com>"
-  ALERT_EMAIL_TO: "farouktoujgani@gmail.com"
+  ALERT_EMAIL_TO: "farouktoujgani@gmail.com,red1personal@gmail.com"
   SMTP_USE_TLS: "true"
 
   # Grafana

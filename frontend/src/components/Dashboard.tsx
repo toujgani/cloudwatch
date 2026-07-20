@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { getDashboardStats, getVMs, getAlerts, getVMMetrics } from '../api/client'
-import type { DashboardStats, VM, Alert } from '../types'
+import { getDashboardStats, getVMs, getAlerts, getVMMetrics, getReportSummary } from '../api/client'
+import type { DashboardStats, VM, Alert, ReportSummary } from '../types'
 
 const SEV_COLOR: Record<string, string> = {
   critical: 'var(--red)', warning: 'var(--yellow)', info: 'var(--blue2)',
@@ -34,10 +34,12 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [chart, setChart]   = useState<{ time: string; avg: number }[]>([])
   const [hours, setHours]   = useState(24)
+  const [finance, setFinance] = useState<ReportSummary['financial'] | null>(null)
 
   const load = async () => {
-    const [s, v, a] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active')])
+    const [s, v, a, r] = await Promise.all([getDashboardStats(), getVMs(), getAlerts('active'), getReportSummary(hours)])
     setStats(s); setVMs(v); setAlerts(a.slice(0, 6))
+    if (r?.financial) setFinance(r.financial)
 
     // Build CPU chart from first VM metrics
     if (v.length > 0) {
@@ -78,11 +80,12 @@ export default function Dashboard() {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
         <KpiCard label="Machines virtuelles" value={stats?.vms.total ?? '—'} sub={`${stats?.vms.active ?? 0} actives`} color="var(--blue2)" />
         <KpiCard label="Pods OpenShift"       value={stats?.pods.total ?? '—'} sub={`${stats?.pods.running ?? 0} running`}  color="var(--teal2)" />
         <KpiCard label="Alertes actives"      value={stats?.alerts.total_active ?? '—'} sub={`${stats?.alerts.critical ?? 0} critiques`} color="var(--red)" />
         <KpiCard label="Health Score"         value={stats ? `${stats.health_score}/100` : '—'} sub="sante globale infra" color="var(--yellow)" />
+        <KpiCard label="Économies IA" value={finance ? `${finance.estimated_period_savings.toFixed(0)}€` : '—'} sub={finance ? `ROI ${finance.roi_percent.toFixed(0)}% · ${finance.resolved_alerts} alertes résolues` : 'calcul en cours'} color="var(--green)" />
       </div>
 
       {/* Charts row */}
