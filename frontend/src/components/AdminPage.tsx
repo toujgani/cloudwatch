@@ -49,19 +49,26 @@ export default function AdminPage() {
 
   const load = async () => {
     try {
-      const [u, sess, ai, rt, st] = await Promise.all([
+      const [u, sess, ai, rt, st] = await Promise.allSettled([
         api.get('/admin/users'),
         api.get('/admin/sessions?limit=50'),
         api.get('/admin/ai-history?limit=20'),
         api.get('/admin/runtime'),
         api.get('/admin/stats'),
       ])
-      setUsers(u.data); setSessions(sess.data)
-      setAiHistory(ai.data); setRuntime(rt.data); setStats(st.data)
+      // Check if we got a 403 on users (primary indicator of no access)
+      if (u.status === 'rejected' && u.reason?.response?.status === 403) {
+        setError('Acces refuse. Admin uniquement.')
+        return
+      }
+      if (u.status === 'fulfilled') setUsers(u.value.data)
+      if (sess.status === 'fulfilled') setSessions(sess.value.data)
+      if (ai.status === 'fulfilled') setAiHistory(ai.value.data)
+      if (rt.status === 'fulfilled') setRuntime(rt.value.data)
+      if (st.status === 'fulfilled') setStats(st.value.data)
       setError('')
     } catch (e: any) {
-      if (e?.response?.status === 403) setError('Acces refuse. Admin uniquement.')
-      else setError('Erreur de chargement.')
+      setError('Erreur de chargement.')
     }
   }
 
