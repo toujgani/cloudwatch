@@ -18,6 +18,7 @@ const links = [
 
 const adminModes: { role: UserRole; label: string }[] = [
   { role: 'admin', label: 'Admin' },
+  { role: 'subadmin', label: 'Sub-Admin' },
   { role: 'operator', label: 'Operateur' },
   { role: 'viewer', label: 'Viewer' },
 ]

@@ -24,23 +24,24 @@ const STORAGE_KEY = 'cloudwatch-auth-user'
 
 const homeByRole: Record<UserRole, string> = {
   admin: '/',
+  subadmin: '/',
   operator: '/alerts',
   viewer: '/',
 }
 
 const routeRoles: Record<string, UserRole[]> = {
-  '/': ['admin', 'viewer'],
-  '/infrastructure': ['admin'],
-  '/vms': ['admin'],
-  '/pods': ['admin'],
-  '/alerts': ['admin', 'operator'],
-  '/logs': ['admin'],
-  '/grafana': ['admin', 'viewer'],
-  '/reports': ['admin', 'viewer'],
-  '/costs': ['admin', 'viewer'],
-  '/kubernetes': ['admin'],
-  '/aiops': ['admin'],
-  '/audit': ['admin'],
+  '/': ['admin', 'subadmin', 'viewer'],
+  '/infrastructure': ['admin', 'subadmin'],
+  '/vms': ['admin', 'subadmin'],
+  '/pods': ['admin', 'subadmin'],
+  '/alerts': ['admin', 'subadmin', 'operator'],
+  '/logs': ['admin', 'subadmin'],
+  '/grafana': ['admin', 'subadmin', 'viewer'],
+  '/reports': ['admin', 'subadmin', 'viewer'],
+  '/costs': ['admin', 'subadmin', 'viewer'],
+  '/kubernetes': ['admin', 'subadmin'],
+  '/aiops': ['admin', 'subadmin'],
+  '/audit': ['admin', 'subadmin'],
   '/admin': ['admin', 'subadmin'],
 }
 
@@ -50,7 +51,7 @@ function readStoredUser(): AuthUser | null {
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as AuthUser
-    if (!parsed.name || !['admin', 'operator', 'viewer'].includes(parsed.role)) return null
+    if (!parsed.name || !['admin', 'subadmin', 'operator', 'viewer'].includes(parsed.role)) return null
 
     return {
       ...parsed,
