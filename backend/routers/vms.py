@@ -114,3 +114,53 @@ def vms_summary(db: Session = Depends(get_db)):
         "shutoff": sum(1 for v in vms if v.status == "SHUTOFF"),
         "error":   sum(1 for v in vms if v.status == "ERROR"),
     }
+
+
+@router.get("/openstack/status")
+def openstack_status():
+    """
+    Returns the current OpenStack connection status.
+    Used by the frontend to show Connected/Disconnected state.
+    """
+    from ..config import settings
+
+    if not settings.OS_AUTH_URL:
+        return {
+            "connected": False,
+            "status": "not_configured",
+            "message": "OpenStack non configure. Ajouter OS_AUTH_URL dans la configuration.",
+        }
+
+    # Try to authenticate
+    try:
+        from .. import openstack_client
+        token = openstack_client._get_token()
+        if token:
+            catalog = openstack_client._token_cache.get("catalog", {})
+            return {
+                "connected": True,
+                "status": "connected",
+                "auth_url": settings.OS_AUTH_URL,
+                "project": settings.OS_PROJECT_NAME,
+                "services": list(catalog.keys()),
+                "message": f"Connecte a OpenStack ({settings.OS_AUTH_URL}). {len(catalog)} services disponibles.",
+            }
+    except Exception as e:
+        return {
+            "connected": False,
+            "status": "error",
+            "auth_url": settings.OS_AUTH_URL,
+            "message": f"Connexion echouee: {str(e)[:200]}",
+        }
+
+    return {"connected": False, "status": "unknown", "message": "Etat inconnu."}
+
+
+@router.get("/predictions")
+def vm_predictions(db: Session = Depends(get_db)):
+    """Get AI predictions for all VMs — predicts CPU/RAM exhaustion."""
+    from ..predictions import predict_all_vms
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "predictions": predict_all_vms(db, hours=2),
+    }

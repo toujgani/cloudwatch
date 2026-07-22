@@ -187,3 +187,115 @@ def predict_all_pods(db: Session, hours: int = 2) -> list[dict]:
     # Sort by urgency: shortest saturation time first
     results.sort(key=lambda r: r["predicted_saturation_hours"] or 9999)
     return results
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VM Predictions (OpenStack)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def predict_vm_metric(db: Session, vm_id: str, metric: str = "cpu", hours: int = 2) -> Prediction:
+    """Predict saturation for a VM metric (cpu_percent or ram_percent)."""
+    since = datetime.utcnow() - timedelta(hours=hours)
+    metrics = (
+        db.query(VMMetric)
+        .filter(VMMetric.vm_id == vm_id, VMMetric.collected_at >= since)
+        .order_by(VMMetric.collected_at)
+        .all()
+    )
+
+    if len(metrics) < 3:
+        return Prediction(
+            resource_id=vm_id, resource_type="vm", metric=metric,
+            current_value=0, trend="stable", slope_per_hour=0,
+            predicted_saturation=None, confidence=0, data_points=len(metrics),
+            message="Insufficient data for VM prediction."
+        )
+
+    base_time = metrics[0].collected_at
+    if metric == "cpu":
+        points = [
+            ((m.collected_at - base_time).total_seconds() / 3600, m.cpu_percent or 0)
+            for m in metrics if m.cpu_percent is not None
+        ]
+        saturation_threshold = 100.0
+    elif metric == "ram":
+        points = [
+            ((m.collected_at - base_time).total_seconds() / 3600, m.ram_percent or 0)
+            for m in metrics if m.ram_percent is not None
+        ]
+        saturation_threshold = 100.0
+    else:
+        points = []
+        saturation_threshold = 100.0
+
+    if len(points) < 3:
+        return Prediction(
+            resource_id=vm_id, resource_type="vm", metric=metric,
+            current_value=0, trend="stable", slope_per_hour=0,
+            predicted_saturation=None, confidence=0, data_points=len(points),
+            message="Not enough valid VM data points."
+        )
+
+    slope, intercept, r_squared = _linear_regression(points)
+    current_value = points[-1][1]
+
+    if slope > 1.0:
+        trend = "increasing"
+    elif slope < -1.0:
+        trend = "decreasing"
+    else:
+        trend = "stable"
+
+    if slope > 0 and current_value < saturation_threshold:
+        hours_to_sat = (saturation_threshold - current_value) / slope
+        if hours_to_sat > 168:
+            predicted_saturation = None
+            message = f"VM {metric.upper()} stable — no saturation within 7 days."
+        else:
+            predicted_saturation = round(hours_to_sat, 1)
+            message = (
+                f"VM {metric.upper()} trending {trend} at {abs(slope):.1f}%/hour. "
+                f"Estimated exhaustion in {predicted_saturation:.1f}h. "
+                f"RECOMMENDATION: {'Resize flavor' if metric == 'ram' else 'Add vCPUs or migrate'}."
+            )
+    else:
+        predicted_saturation = None
+        message = f"VM {metric.upper()} {trend} — no exhaustion predicted."
+
+    confidence = min(0.95, r_squared * 0.7 + min(len(points) / 20, 0.3))
+
+    return Prediction(
+        resource_id=vm_id, resource_type="vm", metric=metric,
+        current_value=round(current_value, 2), trend=trend,
+        slope_per_hour=round(slope, 3),
+        predicted_saturation=predicted_saturation,
+        confidence=round(confidence, 3), data_points=len(points),
+        message=message,
+    )
+
+
+def predict_all_vms(db: Session, hours: int = 2) -> list[dict]:
+    """Run predictions on all VMs with recent metrics."""
+    from .models import VirtualMachine
+    vms = db.query(VirtualMachine).all()
+    results = []
+
+    for vm in vms:
+        for metric in ("cpu", "ram"):
+            pred = predict_vm_metric(db, vm.id, metric, hours)
+            if pred.data_points >= 3:
+                results.append({
+                    "resource_id": pred.resource_id,
+                    "resource_type": pred.resource_type,
+                    "metric": pred.metric,
+                    "current_value": pred.current_value,
+                    "trend": pred.trend,
+                    "slope_per_hour": pred.slope_per_hour,
+                    "predicted_saturation_hours": pred.predicted_saturation,
+                    "confidence": pred.confidence,
+                    "data_points": pred.data_points,
+                    "message": pred.message,
+                })
+
+    results.sort(key=lambda r: r["predicted_saturation_hours"] or 9999)
+    return results

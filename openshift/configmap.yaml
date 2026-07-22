@@ -9,9 +9,10 @@ metadata:
     app.kubernetes.io/component: config
 data:
   # OpenStack (empty = skip collection, no DNS errors)
-  OS_AUTH_URL: ""
-  OS_USERNAME: ""
-  OS_PROJECT_NAME: ""
+  OS_AUTH_URL: "http://10.230.0.199:5000/v3"
+  OS_USERNAME: "unoc"
+  OS_PASSWORD: "@@Cires@@--_!"
+  OS_PROJECT_NAME: "admin"
   OS_USER_DOMAIN_NAME: "Default"
   OS_PROJECT_DOMAIN_NAME: "Default"
 
