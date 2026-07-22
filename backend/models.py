@@ -183,3 +183,19 @@ class User(Base):
     is_active     = Column(Boolean, default=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
+    sessions      = relationship("LoginSession", back_populates="user", cascade="all, delete")
+
+
+class LoginSession(Base):
+    __tablename__ = "login_sessions"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
+    ip_address    = Column(String, nullable=True)
+    user_agent    = Column(String, nullable=True)
+    login_at      = Column(DateTime, default=datetime.utcnow, index=True)
+    last_activity = Column(DateTime, default=datetime.utcnow)
+    is_active     = Column(Boolean, default=True)
+
+    user          = relationship("User", back_populates="sessions")
+

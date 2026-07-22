@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
 from ..database import get_db
-from ..models import User, RoleEnum, AuditLog, AuditActionEnum, Alert
+from ..models import User, RoleEnum, AuditLog, AuditActionEnum, Alert, LoginSession
 from ..routers.auth import require_auth
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -39,7 +39,9 @@ def list_users(admin: User = Depends(_require_admin), db: Session = Depends(get_
 
 @router.patch("/users/{user_id}/role")
 def change_user_role(user_id: int, role: str, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
-    """Change a user's role."""
+    """Change a user's role. Cannot demote yourself."""
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="Impossible de modifier votre propre role.")
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
@@ -52,7 +54,9 @@ def change_user_role(user_id: int, role: str, admin: User = Depends(_require_adm
 
 @router.patch("/users/{user_id}/disable")
 def disable_user(user_id: int, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
-    """Disable a user account."""
+    """Disable a user account. Cannot disable yourself."""
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="Impossible de desactiver votre propre compte.")
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
@@ -151,3 +155,43 @@ def admin_stats(admin: User = Depends(_require_admin), db: Session = Depends(get
         "audit": {"total_entries": total_audit_entries},
         "ai": {"actions_today": ai_actions_24h},
     }
+
+
+@router.get("/sessions")
+def list_sessions(
+    limit: int = 50,
+    admin: User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+):
+    """List all login sessions with IP, user agent, and timestamps."""
+    sessions = (
+        db.query(LoginSession)
+        .order_by(desc(LoginSession.login_at))
+        .limit(limit)
+        .all()
+    )
+    result = []
+    for s in sessions:
+        user = db.get(User, s.user_id)
+        result.append({
+            "id": s.id,
+            "username": user.username if user else "unknown",
+            "role": user.role.value if user else "unknown",
+            "ip_address": s.ip_address,
+            "user_agent": s.user_agent,
+            "login_at": s.login_at.isoformat() if s.login_at else None,
+            "last_activity": s.last_activity.isoformat() if s.last_activity else None,
+            "is_active": s.is_active,
+        })
+    return result
+
+
+@router.delete("/sessions/{session_id}")
+def terminate_session(session_id: int, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
+    """Terminate a specific login session."""
+    session = db.get(LoginSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session.is_active = False
+    db.commit()
+    return {"status": "terminated", "session_id": session_id}

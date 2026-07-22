@@ -3,7 +3,7 @@ Authentication Router — JWT-based server-side auth.
 Users are stored in PostgreSQL with bcrypt-hashed passwords.
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..database import get_db
-from ..models import User, RoleEnum
+from ..models import User, RoleEnum, LoginSession
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -87,8 +87,8 @@ def require_auth(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/login", response_model=TokenResponse)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Authenticate user and return JWT token."""
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Authenticate user and return JWT token. Records login session."""
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
@@ -98,6 +98,18 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Compte désactivé.")
+
+    # Record login session
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    user_agent = request.headers.get("user-agent", "unknown")
+    session = LoginSession(
+        user_id=user.id,
+        ip_address=ip.split(",")[0].strip() if ip else "unknown",
+        user_agent=user_agent[:500],
+        is_active=True,
+    )
+    db.add(session)
+    db.commit()
 
     token = create_access_token({"sub": user.username, "role": user.role.value})
     return TokenResponse(

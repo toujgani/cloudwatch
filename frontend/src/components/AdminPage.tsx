@@ -39,6 +39,17 @@ interface AuditEntry {
   created_at: string | null
 }
 
+interface SessionEntry {
+  id: number
+  username: string
+  role: string
+  ip_address: string | null
+  user_agent: string | null
+  login_at: string | null
+  last_activity: string | null
+  is_active: boolean
+}
+
 interface AdminStats {
   users: { total: number; active: number }
   alerts: { total: number; remediations_applied: number }
@@ -50,22 +61,25 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserEntry[]>([])
   const [aiHistory, setAiHistory] = useState<AiHistoryEntry[]>([])
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
+  const [sessions, setSessions] = useState<SessionEntry[]>([])
   const [stats, setStats] = useState<AdminStats | null>(null)
-  const [tab, setTab] = useState<'overview' | 'users' | 'ai' | 'audit'>('overview')
+  const [tab, setTab] = useState<'overview' | 'users' | 'sessions' | 'ai' | 'audit'>('overview')
   const [error, setError] = useState('')
 
   const load = async () => {
     try {
-      const [s, u, ai, audit] = await Promise.all([
+      const [s, u, ai, audit, sess] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/users'),
         api.get('/admin/ai-history?limit=30'),
         api.get('/admin/audit?limit=50'),
+        api.get('/admin/sessions?limit=50'),
       ])
       setStats(s.data)
       setUsers(u.data)
       setAiHistory(ai.data)
       setAuditLog(audit.data)
+      setSessions(sess.data)
       setError('')
     } catch (e: any) {
       if (e?.response?.status === 403) setError('Acces refuse. Seuls les administrateurs peuvent voir cette page.')
@@ -102,9 +116,9 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        {(['overview', 'users', 'ai', 'audit'] as const).map(t => (
+        {(['overview', 'users', 'sessions', 'ai', 'audit'] as const).map(t => (
           <button key={t} className={tab === t ? 'btn btn-primary' : 'btn'} onClick={() => setTab(t)} style={{ fontSize: 12 }}>
-            {t === 'overview' ? 'Vue globale' : t === 'users' ? 'Utilisateurs' : t === 'ai' ? 'Historique IA' : 'Audit'}
+            {t === 'overview' ? 'Vue globale' : t === 'users' ? 'Utilisateurs' : t === 'sessions' ? 'Sessions' : t === 'ai' ? 'Historique IA' : 'Audit'}
           </button>
         ))}
       </div>
@@ -172,6 +186,51 @@ export default function AdminPage() {
                       style={{ fontSize: 10, padding: '3px 8px', color: u.is_active ? 'var(--red)' : 'var(--green)' }}>
                       {u.is_active ? 'Desactiver' : 'Activer'}
                     </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Sessions */}
+      {tab === 'sessions' && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Utilisateur', 'Role', 'Adresse IP', 'Navigateur', 'Connexion', 'Statut', 'Actions'].map(h => (
+                  <th key={h} style={{ fontSize: 10, color: 'var(--text3)', padding: '8px 10px', textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map(s => (
+                <tr key={s.id} style={{ borderBottom: '1px solid rgba(99,130,255,0.06)' }}>
+                  <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600 }}>{s.username}</td>
+                  <td style={{ padding: '8px 10px', fontSize: 11 }}>{s.role}</td>
+                  <td style={{ padding: '8px 10px', fontSize: 11, fontFamily: 'monospace' }}>{s.ip_address || '—'}</td>
+                  <td style={{ padding: '8px 10px', fontSize: 10, color: 'var(--text3)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.user_agent?.substring(0, 60) || '—'}
+                  </td>
+                  <td style={{ padding: '8px 10px', fontSize: 10, color: 'var(--text3)' }}>
+                    {s.login_at ? new Date(s.login_at).toLocaleString('fr-FR') : '—'}
+                  </td>
+                  <td style={{ padding: '8px 10px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: s.is_active ? 'var(--green)' : 'var(--text3)' }}>
+                      {s.is_active ? 'Active' : 'Terminee'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 10px' }}>
+                    {s.is_active && (
+                      <button className="btn" onClick={async () => {
+                        await api.delete(`/admin/sessions/${s.id}`)
+                        load()
+                      }} style={{ fontSize: 10, padding: '2px 6px', color: 'var(--red)' }}>
+                        Terminer
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
