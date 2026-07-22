@@ -1,11 +1,11 @@
 """
-WebSocket Gateway — Architecture D real-time push layer.
+WebSocket Gateway — real-time push layer.
 Broadcasts a live snapshot every WS_BROADCAST_INTERVAL_SECONDS to all
 connected clients. The snapshot includes:
   - Dashboard KPIs (VMs, pods, alert counts, health score)
   - Active alert list with AI vector data
-  - Last audit log entries
   - Anomaly vector summary for the AIOps simulator
+  - Runtime environment info
 """
 from __future__ import annotations
 
@@ -64,8 +64,9 @@ manager = ConnectionManager()
 
 
 def _build_snapshot(db_session_factory) -> dict[str, Any]:
-    """Build the broadcast payload from the database. Called in a thread pool."""
-    from .models import VirtualMachine, VMMetric, Pod, Alert, AuditLog, StatusEnum, SeverityEnum
+    """Build the broadcast payload from the database."""
+    from .models import VirtualMachine, Pod, Alert, StatusEnum, SeverityEnum
+    from .runtime_detection import runtime_info_dict
     from sqlalchemy.orm import Session
     from sqlalchemy import desc
 
@@ -130,26 +131,6 @@ def _build_snapshot(db_session_factory) -> dict[str, Any]:
         else:
             avg_m = avg_l = avg_t = 0.0
 
-        # ── Recent audit log ──────────────────────────────────────────────────
-        recent_audit = (
-            db.query(AuditLog)
-            .order_by(desc(AuditLog.created_at))
-            .limit(5)
-            .all()
-        )
-        audit_payload = [
-            {
-                "id": e.id,
-                "action": e.action.value,
-                "actor": e.actor,
-                "resource_type": e.resource_type,
-                "resource_id": e.resource_id,
-                "detail": e.detail,
-                "created_at": e.created_at.isoformat() if e.created_at else None,
-            }
-            for e in recent_audit
-        ]
-
         return {
             "type": "snapshot",
             "ts": datetime.utcnow().isoformat() + "Z",
@@ -161,7 +142,7 @@ def _build_snapshot(db_session_factory) -> dict[str, Any]:
             },
             "anomaly_aggregate": {"m": avg_m, "l": avg_l, "t": avg_t},
             "top_alerts": alerts_payload,
-            "recent_audit": audit_payload,
+            "runtime": runtime_info_dict(),
         }
     finally:
         db.close()
@@ -169,7 +150,6 @@ def _build_snapshot(db_session_factory) -> dict[str, Any]:
 
 async def broadcast_loop(db_session_factory):
     """Long-running coroutine started from main.py lifespan."""
-    import asyncio
     loop = asyncio.get_event_loop()
     while True:
         try:

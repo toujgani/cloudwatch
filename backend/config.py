@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     QUOTA_THRESHOLD_CRITICAL: int = 90
     QUOTA_THRESHOLD_REMEDIATE: int = 95
 
+    # Branding
+    BRANDING_STORAGE_PATH: str = "/app/branding"
+
     # Production settings
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: str = ""

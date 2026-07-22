@@ -1,5 +1,6 @@
-# Cloud AI Monitor — Local Development Stack
-# Usage: docker compose up --build
+# Cloud AI Monitor — Production Stack
+# Usage: podman-compose up -d
+# All services start automatically, no manual edits needed.
 version: "3.9"
 
 services:
@@ -8,18 +9,19 @@ services:
     image: postgres:15-alpine
     container_name: cloudwatch-db
     environment:
-      POSTGRES_DB: cloudwatch
-      POSTGRES_USER: cloudwatch
-      POSTGRES_PASSWORD: localdev123
+      POSTGRES_DB: ${POSTGRES_DB:-cloudwatch}
+      POSTGRES_USER: ${POSTGRES_USER:-cloudwatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloudwatch_secure_2026}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cloudwatch"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloudwatch}"]
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   # ── Cloud AI Monitor Application ────────────────────────────────────────────
   app:
@@ -30,20 +32,49 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgresql://cloudwatch:localdev123@postgres:5432/cloudwatch
-      COLLECT_INTERVAL_SECONDS: "30"
-      MOCK_MODE: "false"
-      MOCK_OPENSTACK: "false"
-      MOCK_OPENSHIFT: "false"
-      AUTO_REMEDIATION_ENABLED: "true"
-      AUTO_REMEDIATION_DRY_RUN: "true"
-      SECRET_KEY: "local-dev-secret-change-in-production"
-      KUBE_API_URL: ""
-      KUBE_TOKEN: ""
-      KUBE_NAMESPACE: ""
-      OS_AUTH_URL: ""
-      OS_USERNAME: ""
-      OS_PASSWORD: ""
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cloudwatch}:${POSTGRES_PASSWORD:-cloudwatch_secure_2026}@postgres:5432/${POSTGRES_DB:-cloudwatch}
+      # Collector
+      COLLECT_INTERVAL_SECONDS: ${COLLECT_INTERVAL_SECONDS:-30}
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-random-32-chars}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      # OpenStack (configure via .env file)
+      OS_AUTH_URL: ${OS_AUTH_URL:-}
+      OS_USERNAME: ${OS_USERNAME:-}
+      OS_PASSWORD: ${OS_PASSWORD:-}
+      OS_PROJECT_NAME: ${OS_PROJECT_NAME:-}
+      OS_USER_DOMAIN_NAME: ${OS_USER_DOMAIN_NAME:-Default}
+      OS_PROJECT_DOMAIN_NAME: ${OS_PROJECT_DOMAIN_NAME:-Default}
+      # OpenShift (configure via .env file)
+      KUBE_API_URL: ${KUBE_API_URL:-}
+      KUBE_TOKEN: ${KUBE_TOKEN:-}
+      KUBE_VERIFY_SSL: ${KUBE_VERIFY_SSL:-false}
+      KUBE_NAMESPACE: ${KUBE_NAMESPACE:-}
+      # Grafana (configure via .env file)
+      GRAFANA_URL: ${GRAFANA_URL:-}
+      GRAFANA_API_TOKEN: ${GRAFANA_API_TOKEN:-}
+      # Email (configure via .env file)
+      EMAIL_ALERTS_ENABLED: ${EMAIL_ALERTS_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      # AI Remediation
+      AUTO_REMEDIATION_ENABLED: ${AUTO_REMEDIATION_ENABLED:-true}
+      AUTO_REMEDIATION_DRY_RUN: ${AUTO_REMEDIATION_DRY_RUN:-true}
+      AUTO_REMEDIATION_MIN_SCORE: ${AUTO_REMEDIATION_MIN_SCORE:-55}
+      # Production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Seed passwords
+      SEED_PASSWORD_ADMIN: ${SEED_PASSWORD_ADMIN:-Admin@CloudAI2026}
+      SEED_PASSWORD_OPERATOR: ${SEED_PASSWORD_OPERATOR:-Operator@CloudAI2026}
+      SEED_PASSWORD_VIEWER: ${SEED_PASSWORD_VIEWER:-Viewer@CloudAI2026}
+    volumes:
+      - branding_data:/app/branding
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,3 +82,4 @@ services:
 
 volumes:
   pgdata:
+  branding_data:

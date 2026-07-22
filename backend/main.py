@@ -1,6 +1,7 @@
 """
 Cloud AI Monitor — FastAPI Production API
-Architecture D: AI Agent + WebSocket gateway + Audit Trail
+Multi-target monitoring: OpenStack + OpenShift + Grafana
+Runtime-aware deployment (auto-detects OpenStack VM, OpenShift Pod, or Local)
 """
 import asyncio
 import logging
@@ -16,13 +17,13 @@ from fastapi.middleware.gzip import GZipMiddleware
 from .database import init_db, SessionLocal
 from .collector import start_scheduler, stop_scheduler
 from .routers import vms, pods, alerts, reports, observability, kubernetes
-from .routers import audit as audit_router
 from .routers import aiops as aiops_router
 from .routers import auth as auth_router
 from .routers import costs as costs_router
 from .routers import admin as admin_router
 from .websocket_manager import manager, broadcast_loop
 from .seed import seed_users
+from .runtime_detection import get_runtime
 
 # ── Production Logging ────────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -50,6 +51,10 @@ async def lifespan(app: FastAPI):
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
 
+    # Detect runtime environment
+    runtime = get_runtime()
+    logger.info("Runtime Environment: %s (%s)", runtime.display_name, runtime.hostname)
+
     init_db()
     # Seed default users on first boot
     db = SessionLocal()
@@ -69,8 +74,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Cloud AI Monitor — Infrastructure Supervision",
-    description="AIOps supervision platform for OpenStack & OpenShift — Architecture D",
-    version="2.0.0",
+    description="AIOps supervision platform for OpenStack & OpenShift — Multi-target monitoring",
+    version="3.0.0",
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -86,7 +91,6 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
 _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
 if not _allowed_origins:
-    # Default: allow same-origin (OpenShift route) + local dev
     _allowed_origins = ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]
 
 app.add_middleware(
@@ -124,7 +128,6 @@ app.include_router(alerts.router,        prefix="/api")
 app.include_router(reports.router,       prefix="/api")
 app.include_router(observability.router, prefix="/api")
 app.include_router(kubernetes.router,    prefix="/api")
-app.include_router(audit_router.router,  prefix="/api")
 app.include_router(aiops_router.router,  prefix="/api")
 app.include_router(costs_router.router,  prefix="/api")
 app.include_router(admin_router.router,  prefix="/api")
@@ -137,13 +140,11 @@ async def websocket_live(websocket: WebSocket):
     """
     Real-time push endpoint.
     Broadcasts a full snapshot every WS_BROADCAST_INTERVAL_SECONDS to all
-    connected clients. The frontend subscribes once and receives live KPIs,
-    anomaly vectors and audit trail without polling.
+    connected clients.
     """
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive — client can also send pings
             await websocket.receive_text()
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
@@ -155,11 +156,13 @@ async def websocket_live(websocket: WebSocket):
 
 @app.get("/api/health")
 def health():
+    from .runtime_detection import runtime_info_dict
     return {
         "status": "ok",
         "service": "cloudwatch",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "ws_clients": manager.connected_count,
+        "runtime": runtime_info_dict(),
     }
 
 
@@ -175,7 +178,7 @@ def test_email():
             "EMAIL_ALERTS_ENABLED": settings.EMAIL_ALERTS_ENABLED,
             "SMTP_HOST": settings.SMTP_HOST or "(empty)",
             "SMTP_USERNAME": settings.SMTP_USERNAME or "(empty)",
-            "SMTP_PASSWORD": "(set)" if settings.SMTP_PASSWORD else "(EMPTY - this is the problem)",
+            "SMTP_PASSWORD": "(set)" if settings.SMTP_PASSWORD else "(EMPTY)",
             "SMTP_FROM": settings.SMTP_FROM or "(empty)",
             "ALERT_EMAIL_TO": settings.ALERT_EMAIL_TO or "(empty)",
         }
@@ -225,7 +228,6 @@ def dashboard_stats():
 
 # ── Static files + SPA catch-all (only when built frontend exists) ────────────
 if _has_static:
-    # Serve /assets/*, /cireslogo.png, etc.
     app.mount("/assets", StaticFiles(directory=str(_STATIC_DIR / "assets")), name="static-assets")
 
     @app.get("/{full_path:path}")

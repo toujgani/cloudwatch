@@ -2,18 +2,17 @@ import { NavLink } from 'react-router-dom'
 import type { AuthUser, UserRole } from '../types'
 
 const links = [
-  { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'viewer'] },
-  { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin'] },
-  { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin'] },
-  { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
-  { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin'] },
-  { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'viewer'] },
-  { to: '/costs', icon: 'FIN', label: 'Couts & ROI', roles: ['admin', 'viewer'] },
-  { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin'] },
-  { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin'] },
-  { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin'] },
-  { to: '/audit', icon: 'AUD', label: 'Audit Trail', roles: ['admin'] },
-  { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin', 'subadmin'] },
+  { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'subadmin', 'viewer'] },
+  { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin', 'subadmin'] },
+  { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin', 'subadmin'] },
+  { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'subadmin', 'operator'] },
+  { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin', 'subadmin'] },
+  { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'subadmin', 'viewer'] },
+  { to: '/costs', icon: 'FIN', label: 'Couts & ROI', roles: ['admin', 'subadmin', 'viewer'] },
+  { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin', 'subadmin'] },
+  { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin', 'subadmin'] },
+  { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin', 'subadmin'] },
+  { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin'] },
 ]
 
 const adminModes: { role: UserRole; label: string }[] = [

@@ -37,14 +37,13 @@ COPY app.py ./app.py
 # Copy built frontend into static folder
 COPY --from=frontend-build /build/dist ./static/
 
-# Set ownership
-RUN chown -R appuser:appuser /app
+# Create writable directories
+RUN mkdir -p /app/logs /app/branding && \
+    chown -R appuser:appuser /app && \
+    chmod 775 /app/logs /app/branding
 
 # Switch to non-root user
 USER appuser
-
-# OpenShift uses arbitrary UIDs — ensure writable dirs
-RUN mkdir -p /app/logs && chmod 775 /app/logs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
@@ -53,5 +52,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Expose port (OpenShift convention: 8080)
 EXPOSE 8080
 
-# Production server with proper settings
+# Production server
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2", "--access-log", "--log-level", "info"]

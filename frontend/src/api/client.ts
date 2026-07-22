@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { VM, MetricPoint, Pod, Alert, DashboardStats, AlertsSummary, ReportSummary, KubernetesClusterOverview, KubernetesNode, KubernetesNamespace, KubernetesMeasurements, LogsResponse, GrafanaVisualizationResponse, AuditLogEntry, AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus } from '../types'
+import type { VM, MetricPoint, Pod, Alert, DashboardStats, AlertsSummary, ReportSummary, KubernetesClusterOverview, KubernetesNode, KubernetesNamespace, KubernetesMeasurements, LogsResponse, GrafanaVisualizationResponse, AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus } from '../types'
 
 const TOKEN_KEY = 'cloudwatch-token'
 
@@ -100,11 +100,6 @@ export const getKubernetesMeasurements = (hours = 24)     => api.get<KubernetesM
 export const exportUrl          = (kind: 'alerts'|'vms'|'pods', status?: string) =>
   `/api/reports/export/${kind}${status ? `?status=${status}` : ''}`
 
-// ── Audit ──
-export const getAuditLogs       = (limit = 100, action?: string, actor?: string) =>
-  api.get<AuditLogEntry[]>(`/audit/?limit=${limit}${action ? `&action=${action}` : ''}${actor ? `&actor=${encodeURIComponent(actor)}` : ''}`).then(r => r.data)
-export const getAuditStats      = ()                      => api.get<Record<string, number>>('/audit/stats').then(r => r.data)
-
 // ── AIOps Simulator ──
 export const simulateVector     = (m: number, l: number, t: number, severity = 'warning') =>
   api.post<AnomalyVectorSim>('/aiops/simulate/vector', { m, l, t, severity }).then(r => r.data)
@@ -117,3 +112,18 @@ export const getAIOpsPipelineStatus = ()                  => api.get<AIOPSPipeli
 export const deployStressTest = (mode = 'both', intensity = 'medium', duration = 120) =>
   api.post('/aiops/chaos/deploy-stress', { mode, intensity, duration_seconds: duration }).then(r => r.data)
 export const cleanupStressTest = () => api.delete('/aiops/chaos/cleanup').then(r => r.data)
+
+// ── VM Stress Test (SSH-based) ──
+export const deployVMStress = (payload: object) =>
+  api.post('/aiops/chaos/vm-stress', payload).then(r => r.data)
+export const cleanupVMStress = (vmIp: string) =>
+  api.delete(`/aiops/chaos/vm-stress/${encodeURIComponent(vmIp)}`).then(r => r.data)
+export const getActiveVMStress = () =>
+  api.get('/aiops/chaos/vm-stress/active').then(r => r.data)
+
+// ── OpenStack Extended ──
+export const getOpenStackEnvironment = () => api.get('/vms/openstack/environment').then(r => r.data)
+export const getOpenStackNetworks = () => api.get('/vms/openstack/networks').then(r => r.data)
+export const getOpenStackVolumes = () => api.get('/vms/openstack/volumes').then(r => r.data)
+export const getOpenStackImages = () => api.get('/vms/openstack/images').then(r => r.data)
+export const getOpenStackHypervisors = () => api.get('/vms/openstack/hypervisors').then(r => r.data)

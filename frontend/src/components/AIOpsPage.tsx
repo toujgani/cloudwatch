@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis } from 'recharts'
-import { simulateVector, injectAnomaly, getAIOpsKnowledgeBase, getAIOpsPipelineStatus, getAuditLogs, deployStressTest, cleanupStressTest } from '../api/client'
-import type { AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus, AuditLogEntry } from '../types'
+import { simulateVector, injectAnomaly, getAIOpsKnowledgeBase, getAIOpsPipelineStatus, deployStressTest, cleanupStressTest } from '../api/client'
+import type { AnomalyVectorSim, AIOpsInjectionResult, AIOpsKnowledgeEntry, AIOPSPipelineStatus } from '../types'
 
 const DECISION_COLOR: Record<string, string> = {
   escalate: 'var(--red)',
@@ -35,7 +35,6 @@ export default function AIOpsPage() {
   // Knowledge base + pipeline
   const [kb, setKb]             = useState<AIOpsKnowledgeEntry[]>([])
   const [pipeline, setPipeline] = useState<AIOPSPipelineStatus | null>(null)
-  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([])
 
   // Stress test state
   const [stressMode, setStressMode] = useState<'cpu' | 'ram' | 'both'>('both')
@@ -50,7 +49,6 @@ export default function AIOpsPage() {
     getAIOpsKnowledgeBase().then(setKb).catch(() => {})
     const refresh = () => {
       getAIOpsPipelineStatus().then(setPipeline).catch(() => {})
-      getAuditLogs(20).then(setAuditLog).catch(() => {})
     }
     refresh()
     intervalRef.current = setInterval(refresh, 5000)
@@ -109,9 +107,6 @@ export default function AIOpsPage() {
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>Alertes actives: <strong>{pipeline.active_alerts}</strong></span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>Score moyen: <strong>{pipeline.avg_ai_score}</strong></span>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>Norme moy: <strong>{pipeline.avg_anomaly_norm}</strong></span>
-          {pipeline.last_audit_action && (
-            <span style={{ fontSize: 11, color: 'var(--text3)' }}>Dernier audit: {pipeline.last_audit_action}</span>
-          )}
           <div style={{ flex: 1 }} />
           {Object.entries(pipeline.decision_distribution).map(([d, count]) => (
             <span key={d} style={{ fontSize: 11, color: DECISION_COLOR[d] ?? 'var(--text2)', fontWeight: 600 }}>
@@ -372,25 +367,6 @@ export default function AIOpsPage() {
           </div>
         </div>
 
-        {/* Audit trail */}
-        <div className="panel" style={{ padding: '16px 18px' }}>
-          <div style={{ fontWeight: 600, marginBottom: 10 }}>Audit Trail — 20 dernières entrées</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
-            {auditLog.length === 0 && <div style={{ color: 'var(--text3)', fontSize: 12, textAlign: 'center', padding: 20 }}>Aucune entrée d'audit</div>}
-            {auditLog.map(entry => (
-              <div key={entry.id} style={{ padding: '7px 10px', borderRadius: 6, background: 'var(--bg3)', fontSize: 11 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 2 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--blue2)', fontFamily: 'monospace' }}>{entry.action}</span>
-                  <span style={{ color: 'var(--text3)' }}>par</span>
-                  <span style={{ color: 'var(--text2)', fontWeight: 500 }}>{entry.actor}</span>
-                  {entry.resource_type && <span style={{ color: 'var(--text3)' }}>→ {entry.resource_type} #{entry.resource_id}</span>}
-                </div>
-                {entry.detail && <div style={{ color: 'var(--text2)' }}>{entry.detail.slice(0, 120)}</div>}
-                <div style={{ color: 'var(--text3)', marginTop: 2 }}>{new Date(entry.created_at).toLocaleString('fr-FR')}</div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -33,6 +33,12 @@ class AuditActionEnum(str, enum.Enum):
     login = "login"
     logout = "logout"
     settings_changed = "settings_changed"
+    user_created = "user_created"
+    user_deleted = "user_deleted"
+    user_disabled = "user_disabled"
+    user_enabled = "user_enabled"
+    password_changed = "password_changed"
+    role_changed = "role_changed"
 
 
 # ─── VirtualMachine ───────────────────────────────────────────────────────────
@@ -111,9 +117,9 @@ class Alert(Base):
     status       = Column(Enum(StatusEnum), default=StatusEnum.active)
     title        = Column(String, nullable=False)
     description  = Column(Text)
-    rule_name    = Column(String)               # which rule triggered this
-    metric_value = Column(Float)                # the value that triggered
-    threshold    = Column(Float)                # the threshold that was crossed
+    rule_name    = Column(String)
+    metric_value = Column(Float)
+    threshold    = Column(Float)
     acknowledged = Column(Boolean, default=False)
     acknowledged_by = Column(String, nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
@@ -134,11 +140,11 @@ class Alert(Base):
     assigned_to  = Column(String, nullable=True)
     assigned_at  = Column(DateTime, nullable=True)
 
-    # Anomaly vector A = [m, l, t]  (metrics, logs, traces)
-    anomaly_m    = Column(Float, nullable=True)   # metrics component  0-1
-    anomaly_l    = Column(Float, nullable=True)   # logs component     0-1
-    anomaly_t    = Column(Float, nullable=True)   # traces component   0-1
-    anomaly_vector_norm = Column(Float, nullable=True)  # |A|
+    # Anomaly vector A = [m, l, t]
+    anomaly_m    = Column(Float, nullable=True)
+    anomaly_l    = Column(Float, nullable=True)
+    anomaly_t    = Column(Float, nullable=True)
+    anomaly_vector_norm = Column(Float, nullable=True)
 
     vm_id        = Column(String, ForeignKey("virtual_machines.id"), nullable=True)
     pod_id       = Column(String, ForeignKey("pods.id"), nullable=True)
@@ -157,11 +163,11 @@ class AuditLog(Base):
 
     id          = Column(Integer, primary_key=True, autoincrement=True)
     action      = Column(Enum(AuditActionEnum), nullable=False, index=True)
-    actor       = Column(String, nullable=False, default="system")   # who triggered it
-    resource_type = Column(String, nullable=True)                    # "alert" | "vm" | "pod"
-    resource_id = Column(String, nullable=True)                      # the affected resource id
-    detail      = Column(Text, nullable=True)                        # human-readable detail
-    extra       = Column(Text, nullable=True)                        # JSON blob for extra data
+    actor       = Column(String, nullable=False, default="system")
+    resource_type = Column(String, nullable=True)
+    resource_id = Column(String, nullable=True)
+    detail      = Column(Text, nullable=True)
+    extra       = Column(Text, nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow, index=True)
 
 
@@ -182,6 +188,11 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role          = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.viewer)
     is_active     = Column(Boolean, default=True)
+    is_locked     = Column(Boolean, default=False)
+    force_password_change = Column(Boolean, default=False)
+    failed_login_count = Column(Integer, default=0)
+    last_login_at = Column(DateTime, nullable=True)
+    last_activity_at = Column(DateTime, nullable=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
     sessions      = relationship("LoginSession", back_populates="user", cascade="all, delete")
@@ -194,9 +205,25 @@ class LoginSession(Base):
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
     ip_address    = Column(String, nullable=True)
     user_agent    = Column(String, nullable=True)
+    browser       = Column(String, nullable=True)
+    os            = Column(String, nullable=True)
     login_at      = Column(DateTime, default=datetime.utcnow, index=True)
     last_activity = Column(DateTime, default=datetime.utcnow)
     is_active     = Column(Boolean, default=True)
 
     user          = relationship("User", back_populates="sessions")
 
+
+# ─── Branding ─────────────────────────────────────────────────────────────────
+
+class BrandingConfig(Base):
+    __tablename__ = "branding_config"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    company_name     = Column(String, default="CIRES Technologies")
+    app_name         = Column(String, default="Cloud AI Monitor")
+    logo_path        = Column(String, nullable=True)
+    app_logo_path    = Column(String, nullable=True)
+    favicon_path     = Column(String, nullable=True)
+    background_path  = Column(String, nullable=True)
+    updated_at       = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

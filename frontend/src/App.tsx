@@ -13,7 +13,6 @@ import LogsPage from './components/LogsPage'
 import GrafanaVisualizationsPage from './components/GrafanaVisualizationsPage'
 import LoginPage from './components/LoginPage'
 import AIOpsPage from './components/AIOpsPage'
-import AuditLogPage from './components/AuditLogPage'
 import CostPage from './components/CostPage'
 import AdminPage from './components/AdminPage'
 import { clearStoredToken } from './api/client'
@@ -41,8 +40,7 @@ const routeRoles: Record<string, UserRole[]> = {
   '/costs': ['admin', 'subadmin', 'viewer'],
   '/kubernetes': ['admin', 'subadmin'],
   '/aiops': ['admin', 'subadmin'],
-  '/audit': ['admin', 'subadmin'],
-  '/admin': ['admin', 'subadmin'],
+  '/admin': ['admin'],
 }
 
 function readStoredUser(): AuthUser | null {
@@ -63,7 +61,7 @@ function readStoredUser(): AuthUser | null {
 }
 
 function ProtectedRoute({ user, path, children }: { user: AuthUser; path: string; children: ReactNode }) {
-  if (!routeRoles[path].includes(user.role)) {
+  if (!routeRoles[path]?.includes(user.role)) {
     return <Navigate to={homeByRole[user.role]} replace />
   }
 
@@ -147,6 +145,16 @@ export default function App() {
                 </div>
               </div>
             </div>
+            {wsSnapshot?.runtime && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                background: 'rgba(99,130,255,0.08)', color: 'var(--blue2)',
+                border: '1px solid rgba(99,130,255,0.2)', fontWeight: 600,
+              }}>
+                ◆ {wsSnapshot.runtime.display_name}
+              </div>
+            )}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -207,7 +215,6 @@ export default function App() {
             <Route path="/reports" element={<ProtectedRoute user={user} path="/reports"><ReportsPage /></ProtectedRoute>} />
             <Route path="/kubernetes" element={<ProtectedRoute user={user} path="/kubernetes"><KubernetesPage /></ProtectedRoute>} />
             <Route path="/aiops" element={<ProtectedRoute user={user} path="/aiops"><AIOpsPage /></ProtectedRoute>} />
-            <Route path="/audit" element={<ProtectedRoute user={user} path="/audit"><AuditLogPage /></ProtectedRoute>} />
             <Route path="/costs" element={<ProtectedRoute user={user} path="/costs"><CostPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute user={user} path="/admin"><AdminPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to={homeByRole[user.role]} replace />} />

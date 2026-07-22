@@ -243,3 +243,80 @@ def openstack_security_groups():
         return openstack_client.list_security_groups()
     except Exception as e:
         return []
+
+
+@router.get("/openstack/subnets")
+def openstack_subnets():
+    """List all Neutron subnets."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_subnets()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/routers")
+def openstack_routers():
+    """List all Neutron routers."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_routers()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/environment")
+def openstack_environment():
+    """
+    Full OpenStack environment discovery for infrastructure page.
+    Returns projects, networks, subnets, routers, floating IPs, images,
+    volumes, snapshots, hypervisors, availability zones, VM details.
+    """
+    from .. import openstack_client
+    from ..config import settings
+
+    if not settings.OS_AUTH_URL:
+        return {"connected": False, "message": "OpenStack not configured."}
+
+    try:
+        env = openstack_client.discover_environment()
+        # Enrich with detailed data for the frontend
+        try:
+            env["networks_detail"] = openstack_client.list_networks()
+        except Exception:
+            env["networks_detail"] = []
+        try:
+            env["subnets_detail"] = openstack_client.list_subnets()
+        except Exception:
+            env["subnets_detail"] = []
+        try:
+            env["routers_detail"] = openstack_client.list_routers()
+        except Exception:
+            env["routers_detail"] = []
+        try:
+            env["floating_ips_detail"] = openstack_client.list_floating_ips()
+        except Exception:
+            env["floating_ips_detail"] = []
+        try:
+            env["images_detail"] = openstack_client.list_images()
+        except Exception:
+            env["images_detail"] = []
+        try:
+            env["volumes_detail"] = openstack_client.list_volumes()
+        except Exception:
+            env["volumes_detail"] = []
+        try:
+            env["hypervisors_detail"] = openstack_client.list_hypervisors()
+        except Exception:
+            env["hypervisors_detail"] = []
+        try:
+            env["flavors_detail"] = openstack_client.list_flavors()
+        except Exception:
+            env["flavors_detail"] = []
+        try:
+            env["servers_detail"] = openstack_client.list_servers()
+        except Exception:
+            env["servers_detail"] = []
+        return env
+    except Exception as e:
+        return {"connected": False, "error": str(e)[:300]}
