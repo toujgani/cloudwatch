@@ -1,106 +1,81 @@
-# Local Development Setup
+<div align="center">
 
-## Prerequisites
+# Cloud AI Monitor — Local Development
 
-- **Docker** and **Docker Compose** (v2+)
-- **Node.js** 18+ (for frontend development only)
-- **Python** 3.11+ (for backend development only)
-- **Git**
+### Run the Full Stack on Your Machine
 
-## Quick Start with Docker Compose
+</div>
 
-The fastest way to run the full stack locally:
+---
+
+## Quick Start (Docker Compose)
 
 ```bash
-# Clone and enter the project
-git clone https://github.com/red1intheocean/cloud-ai-monitor.git
-cd cloud-ai-monitor
-
-# Copy environment template
+git clone https://github.com/toujgani/cloudwatch.git
+cd cloudwatch
 cp backend/.env.example backend/.env
-
-# Start everything (builds frontend + backend + PostgreSQL)
 docker compose up --build
 ```
 
-Open http://localhost:8080 in your browser.
+Open: http://localhost:8080
+
+---
 
 ## Development Mode (Hot Reload)
 
-For active development with hot reloading on both frontend and backend:
+### Terminal 1: Database
 
-### Terminal 1: PostgreSQL
 ```bash
 docker compose up postgres
 ```
 
 ### Terminal 2: Backend
+
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cd ..
 uvicorn app:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ### Terminal 3: Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Frontend runs on http://localhost:5173 with API calls proxied to http://localhost:8080.
+Frontend: http://localhost:5173 (proxies API to 8080)
+
+---
 
 ## Environment Variables
 
-Copy `backend/.env.example` to `backend/.env` and configure:
+Copy `backend/.env.example` to `backend/.env`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| DATABASE_URL | Yes | PostgreSQL connection string |
-| SECRET_KEY | Yes | JWT signing key (any random string) |
-| KUBE_API_URL | No | OpenShift API URL (leave empty for no monitoring) |
-| KUBE_TOKEN | No | Service account token |
-| OS_AUTH_URL | No | OpenStack Keystone URL (leave empty for no monitoring) |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SECRET_KEY` | Yes | JWT signing key |
+| `KUBE_API_URL` | No | OpenShift API (leave empty = skip) |
+| `OS_AUTH_URL` | No | OpenStack API (leave empty = skip) |
+| `COLLECT_INTERVAL_SECONDS` | No | Default: 30 |
 
-When sources are not configured, the dashboard shows empty data — no errors.
+When sources are not configured, the collector skips them gracefully. No errors.
 
-## Running Without External Services
-
-The application works fine without OpenStack or OpenShift connections:
-- The collector will log "unavailable" and skip
-- The dashboard will show zeros
-- You can still use the AIOps simulator to inject test alerts
-
-## Building the Production Image Locally
-
-```bash
-# Build
-docker build -t cloud-ai-monitor:local .
-
-# Run
-docker run -p 8080:8080 \
-  -e DATABASE_URL=postgresql://cloudwatch:localdev123@host.docker.internal:5432/cloudwatch \
-  cloud-ai-monitor:local
-```
+---
 
 ## Useful Commands
 
 ```bash
-# View application logs
+# View logs
 docker compose logs app -f
 
-# View database logs
-docker compose logs postgres -f
-
-# Reset database (delete all data)
-docker compose down -v
-docker compose up --build
-
-# Run only the database
-docker compose up postgres
+# Reset database
+docker compose down -v && docker compose up --build
 
 # Rebuild without cache
 docker compose build --no-cache

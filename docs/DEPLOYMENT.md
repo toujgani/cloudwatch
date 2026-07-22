@@ -1,156 +1,119 @@
-# Deployment Guide
+<div align="center">
 
-## Overview
+# Cloud AI Monitor — Deployment Guide
 
-Cloud AI Monitor deploys as a single container serving both the React frontend and FastAPI backend, connected to a PostgreSQL database. All resources are deployed in the `red1intheocean-dev` namespace on the Red Hat OpenShift Developer Sandbox.
+### OpenShift Developer Sandbox Deployment
+
+</div>
+
+---
 
 ## Prerequisites
 
-1. **Red Hat Developer Sandbox account** — [Sign up here](https://developers.redhat.com/developer-sandbox)
-2. **oc CLI** — [Install guide](https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html)
-3. **Docker** (for building images locally) or rely on GitHub Actions
-4. **GitHub account** (for GHCR image registry and CI/CD)
+| Tool | Purpose |
+|------|---------|
+| `oc` CLI | OpenShift command line |
+| Podman or Docker | Build container images |
+| Git | Version control |
+| GitHub account | CI/CD + GHCR image registry |
 
-## Architecture Decision
+---
 
-We use **Option A: Single Container** where FastAPI serves both the API and the built React frontend as static files.
+## Architecture Decision: Single Container
 
-Why:
-- Developer Sandbox has limited resources (7 GB RAM, 15 GB storage)
-- One deployment = simpler to manage, debug, and monitor
-- FastAPI already has built-in static file serving
-- Single route, no complex ingress rules needed
+FastAPI serves both the API and the React frontend as static files.
+
+```
+One Dockerfile → One Image → One Deployment → One Route → One URL
+```
+
+Why: Developer Sandbox has limited resources. One pod uses less quota than two.
+
+---
 
 ## Step-by-Step Deployment
 
-### Step 1: Get Your OpenShift Credentials
-
-1. Log into [Red Hat OpenShift Developer Sandbox](https://console.redhat.com/openshift/sandbox)
-2. Click your username (top right) → **Copy login command**
-3. Click **Display Token**
-4. Copy the `oc login` command — it looks like:
-   ```bash
-   oc login --token=sha256~XXXXXXXX --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
-   ```
-
-### Step 2: Configure Secrets
-
-Edit `openshift/secrets.yaml` and replace the placeholder values:
-
-```yaml
-stringData:
-  DATABASE_URL: "postgresql://cloudwatch:YOUR_STRONG_PASSWORD@postgresql:5432/cloudwatch"
-  POSTGRES_PASSWORD: "YOUR_STRONG_PASSWORD"
-  SECRET_KEY: "your-random-32-char-secret-key-here"
-```
-
-Generate a secure password:
-```bash
-openssl rand -base64 24
-```
-
-### Step 3: Deploy via Script
+### 1. Build & Push Image
 
 ```bash
-# Login to OpenShift
-oc login --token=sha256~YOUR_TOKEN --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
-
-# Run deployment
-./scripts/deploy.sh
+podman build -t ghcr.io/toujgani/cloud-ai-monitor:latest .
+podman push ghcr.io/toujgani/cloud-ai-monitor:latest
 ```
 
-### Step 4: Verify
+### 2. Login to OpenShift
 
 ```bash
-# Check pods are running
-oc get pods -n red1intheocean-dev
-
-# Check the route
-oc get routes -n red1intheocean-dev
-
-# View logs
-oc logs deployment/cloud-ai-monitor -n red1intheocean-dev -f
+oc login --token=YOUR_TOKEN --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
 ```
 
-## Manual Deployment (Without Script)
+### 3. Deploy
 
 ```bash
-# 1. Login
-oc login --token=sha256~YOUR_TOKEN --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
-oc project red1intheocean-dev
-
-# 2. Create secrets
 oc apply -f openshift/secrets.yaml
-
-# 3. Create config
 oc apply -f openshift/configmap.yaml
-
-# 4. Deploy PostgreSQL
 oc apply -f openshift/postgresql.yaml
-oc rollout status deployment/postgresql --timeout=120s
-
-# 5. Deploy application
+oc rollout status deployment/postgresql --timeout=90s
 oc apply -f openshift/deployment.yaml
-oc rollout status deployment/cloud-ai-monitor --timeout=180s
+```
 
-# 6. Get URL
+### 4. Access
+
+```bash
 oc get route cloud-ai-monitor -o jsonpath='{.spec.host}'
 ```
 
-## Deploying from the OpenShift Web Console
+Open: `https://<that-url>`
 
-If you prefer the GUI:
+---
 
-1. Go to **Developer** perspective (top-left dropdown)
-2. Click **+Add** in the left sidebar
-3. Choose **Container images**
-4. Image: `ghcr.io/red1intheocean/cloud-ai-monitor:latest`
-5. Application name: `cloud-ai-monitor`
-6. Resource type: **Deployment**
-7. Target port: `8080`
-8. Check **Create a Route**
-9. Click **Create**
+## CI/CD (Automatic)
 
-Then add the database:
-1. Click **+Add** → **Database** → **PostgreSQL**
-2. Set the same credentials as in your secrets
+Every `git push` to `main` triggers:
 
-## CI/CD Automated Deployment
+```
+Push → GitHub Actions → Build Image → Push GHCR → Deploy OpenShift
+```
 
-Once GitHub Actions is configured (see [CI_CD.md](CI_CD.md)), every push to `main` will automatically:
-1. Build the Docker image
-2. Push to GHCR
-3. Deploy to OpenShift with a rolling update
+Required GitHub Secrets:
+- `OPENSHIFT_SERVER`: `https://api.rm2.thpm.p1.openshiftapps.com:6443`
+- `OPENSHIFT_TOKEN`: Service account token (expires 2057)
+
+---
+
+## If the App Goes Down
+
+```bash
+oc scale deployment/postgresql --replicas=1 -n red1intheocean-dev
+oc scale deployment/cloud-ai-monitor --replicas=1 -n red1intheocean-dev
+```
+
+Wait 30 seconds. Both pods restart automatically.
+
+---
+
+## Updating Secrets
+
+```bash
+# SMTP password
+oc patch secret cloudwatch-secrets -n red1intheocean-dev \
+  -p '{"stringData":{"SMTP_PASSWORD":"your_password"}}'
+
+# OpenStack password
+oc patch secret cloudwatch-secrets -n red1intheocean-dev \
+  -p '{"stringData":{"OS_PASSWORD":"your_password"}}'
+
+# Restart to pick up changes
+oc rollout restart deployment/cloud-ai-monitor -n red1intheocean-dev
+```
+
+---
 
 ## Troubleshooting
 
-### Pod stuck in CrashLoopBackOff
-```bash
-oc logs deployment/cloud-ai-monitor --previous
-```
-Usually means DATABASE_URL is wrong or PostgreSQL isn't ready yet.
-
-### Route not accessible
-```bash
-oc get route cloud-ai-monitor -o yaml
-```
-Check that TLS termination is set to `edge`.
-
-### Database connection refused
-```bash
-oc get pods | grep postgresql
-oc logs deployment/postgresql
-```
-Check if PostgreSQL pod is running and secrets match.
-
-### Image pull errors
-Make sure the GHCR image is public, or create an image pull secret:
-```bash
-oc create secret docker-registry ghcr-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
-  --docker-email=your@email.com
-
-oc secrets link default ghcr-secret --for=pull
-```
+| Symptom | Command | Fix |
+|---------|---------|-----|
+| App not available | `oc get pods` | Scale up if 0/0 |
+| Image pull error | Check GHCR package visibility | Make package public |
+| Pod CrashLoopBackOff | `oc logs deployment/cloud-ai-monitor` | Read error, fix code |
+| Database connection refused | `oc logs deployment/postgresql` | Check secrets match |
+| Can't reach URL | `oc get route` | Wait for DNS (1-2 min) |

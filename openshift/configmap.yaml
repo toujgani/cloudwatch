@@ -44,9 +44,9 @@ data:
 
   # Grafana
   GRAFANA_URL: "http://localhost:3000"
-  GRAFANA_METRICS_DATASOURCE_UID: ""
-  GRAFANA_LOGS_DATASOURCE_UID: ""
-  GRAFANA_TRACES_DATASOURCE_UID: ""
+  GRAFANA_METRICS_DATASOURCE_UID: "grafanacloud-prom"
+  GRAFANA_LOGS_DATASOURCE_UID: "grafanacloud-logs"
+  GRAFANA_TRACES_DATASOURCE_UID: "grafanacloud-traces"
   GRAFANA_VERIFY_SSL: "true"
 
   # Financial

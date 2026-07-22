@@ -1,148 +1,213 @@
-# Architecture
+<div align="center">
+
+# Cloud AI Monitor — Architecture
+
+### System Design & AI Model Documentation
+
+</div>
+
+---
 
 ## System Overview
 
-Cloud AI Monitor follows a monolithic deployment pattern (single container) with clean internal separation of concerns.
+Cloud AI Monitor is a **monolithic deployment** with clean internal separation of concerns. A single container serves the React frontend, FastAPI backend, AI engine, and background collectors.
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          OpenShift Cluster                              │
-│  ┌─────────────────────────────────────────────────────────────────┐  │
-│  │                  red1intheocean-dev namespace                     │  │
-│  │                                                                   │  │
-│  │  ┌─────────────────┐     ┌──────────────────────────────────┐   │  │
-│  │  │   PostgreSQL     │     │      cloud-ai-monitor Pod        │   │  │
-│  │  │   (Deployment)   │◄───►│                                  │   │  │
-│  │  │   + PVC (1Gi)    │     │  FastAPI (port 8080)             │   │  │
-│  │  └─────────────────┘     │  ├── /api/* → REST endpoints     │   │  │
-│  │                           │  ├── /ws/live → WebSocket         │   │  │
-│  │                           │  └── /* → React SPA (static)     │   │  │
-│  │                           │                                  │   │  │
-│  │                           │  Background Tasks:                │   │  │
-│  │                           │  ├── APScheduler (collector)      │   │  │
-│  │                           │  └── WS broadcast loop            │   │  │
-│  │                           └──────────────────────────────────┘   │  │
-│  │                                         │                         │  │
-│  │                           ┌─────────────┴──────────────┐         │  │
-│  │                           │        Route (TLS)          │         │  │
-│  │                           │ cloud-ai-monitor-red1...    │         │  │
-│  │                           └─────────────────────────────┘         │  │
-│  └─────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
-                                       │
-                          External: OpenStack API
-                          External: Grafana API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        DEPLOYMENT ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌────────────────────────────────────────────────────────────────────┐
+│              OpenShift Cluster (Red Hat Developer Sandbox)          │
+│                                                                    │
+│  ┌─────────────────┐     ┌──────────────────────────────────┐    │
+│  │   PostgreSQL     │     │      cloud-ai-monitor Pod        │    │
+│  │   (Deployment)   │◄───►│                                  │    │
+│  │   + PVC (2Gi)    │     │  FastAPI (port 8080)             │    │
+│  └─────────────────┘     │  ├── /api/* REST endpoints        │    │
+│                           │  ├── /ws/live WebSocket           │    │
+│                           │  └── /* React SPA (static)        │    │
+│                           │                                  │    │
+│                           │  Background Tasks:                │    │
+│                           │  ├── APScheduler (collector 30s)  │    │
+│                           │  ├── WS broadcast (3s)            │    │
+│                           │  └── AI remediation engine        │    │
+│                           └──────────────────────────────────┘    │
+│                                         │                         │
+│                           ┌─────────────┴──────────────┐         │
+│                           │     Route (TLS edge)        │         │
+│                           └─────────────────────────────┘         │
+└────────────────────────────────────────────────────────────────────┘
+         │                              │
+         ▼                              ▼
+  ┌──────────────┐            ┌──────────────────┐
+  │  OpenStack   │            │  External SMTP   │
+  │  (Keystone,  │            │  (Gmail)         │
+  │   Nova,      │            └──────────────────┘
+  │   Cinder)    │
+  └──────────────┘
 ```
+
+---
+
+## AI Engine — Three-Pillar AIOps Pipeline
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                      AI DECISION PIPELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Data Sources              AI Processing              Actions
+  ──────────              ─────────────              ───────
+
+  OpenShift API    ──┐
+  (pods, metrics)    │    ┌───────────────┐
+                     ├───►│ Build Vector  │
+  OpenStack API    ──┤    │ A = [m, l, t] │
+  (VMs, diagnostics) │    └───────┬───────┘
+                     │            │
+  Historical DB    ──┘            ▼
+                          ┌───────────────┐
+                          │ Health Decay   │     H = 100 × exp(-λ|A|²)
+                          │ Score Model    │
+                          └───────┬───────┘
+                                  │
+                                  ▼
+                          ┌───────────────┐
+                          │ Decision      │     score → tier
+                          │ Engine        │
+                          └───────┬───────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    │             │             │
+                    ▼             ▼             ▼
+            ┌──────────┐  ┌──────────┐  ┌──────────┐
+            │ K8s PATCH│  │ OpenStack│  │  Email   │
+            │ (scale)  │  │ (resize) │  │ (report) │
+            └──────────┘  └──────────┘  └──────────┘
+```
+
+---
 
 ## Component Architecture
 
-### Backend (FastAPI)
+### Backend Modules
+
+| Module | Responsibility |
+|--------|---------------|
+| `ai_agent.py` | Anomaly vector computation, health decay, decision engine |
+| `remediation_agent.py` | Action selection, guardrails, execution, audit |
+| `collector.py` | Periodic collection + database reconciliation |
+| `predictions.py` | Linear regression forecasting (time-to-exhaustion) |
+| `soft_quota.py` | Configurable quota thresholds (warning/critical/remediate) |
+| `email_notifications.py` | SMTP incident reports with 3x retry |
+| `openstack_client.py` | Keystone auth + Nova + Cinder (plug-and-play) |
+| `openshift_client.py` | K8s API (list, patch, delete, scale) |
+| `websocket_manager.py` | Real-time push to frontend every 3s |
+
+### Data Flow
 
 ```
-backend/
-├── main.py              # App factory, middleware, lifespan
-├── config.py            # Pydantic settings (from env vars)
-├── database.py          # SQLAlchemy engine + sessions
-├── models.py            # ORM: VM, Pod, Alert, AuditLog
-├── collector.py         # APScheduler: periodic data collection
-├── alerts.py            # Rule engine: threshold evaluation
-├── ai_agent.py          # Anomaly vector + decision engine
-├── remediation_agent.py # Auto-remediation with guardrails
-├── audit.py             # Audit trail writer
-├── websocket_manager.py # Real-time push (WS broadcast)
-├── openstack_client.py  # OpenStack REST API (Keystone + Nova)
-├── openshift_client.py  # Kubernetes REST API (pods, nodes, metrics)
-├── grafana_client.py    # Grafana API proxy
-├── email_notifications.py
-└── routers/
-    ├── vms.py           # /api/vms/*
-    ├── pods.py          # /api/pods/*
-    ├── alerts.py        # /api/alerts/*
-    ├── reports.py       # /api/reports/*
-    ├── observability.py # /api/observability/*
-    ├── kubernetes.py    # /api/kubernetes/*
-    ├── audit.py         # /api/audit/*
-    └── aiops.py         # /api/aiops/*
+Every 30 seconds:
+
+  Collector
+     │
+     ├── GET /api/v1/pods (OpenShift)
+     ├── GET /compute/v2.1/servers (OpenStack)
+     │
+     ▼
+  PostgreSQL (insert/update/DELETE stale)
+     │
+     ▼
+  Alert Engine (threshold check)
+     │
+     ├── Pod Failed? → CRITICAL
+     ├── Restarts >= 5? → WARNING
+     ├── CPU > 90%? → CRITICAL
+     ├── Quota > soft limit? → CRITICAL
+     │
+     ▼
+  AI Agent (score + decide)
+     │
+     ├── Score >= threshold? → Remediation Agent
+     │                            │
+     │                            ├── PATCH deployment (scale CPU/RAM)
+     │                            ├── DELETE pod (restart)
+     │                            ├── DELETE stress-test (cleanup)
+     │                            ├── Nova resize (OpenStack)
+     │                            └── Cinder extend (OpenStack)
+     │
+     ▼
+  Email Incident Report
+     │
+     ▼
+  Audit Trail (database)
 ```
 
-### Frontend (React)
+---
 
-Single-page application with:
-- **Routing**: React Router with role-based access control
-- **State**: Local state + WebSocket real-time updates
-- **API Layer**: Axios client with baseURL `/api`
-- **Visualization**: Recharts for all graphs
+## Security Architecture
 
-### AI Engine
+| Layer | Mechanism |
+|-------|-----------|
+| Authentication | JWT tokens (bcrypt password hashing) |
+| Secrets | OpenShift Secrets (encrypted at rest) |
+| Network | TLS edge termination (HTTPS) |
+| Container | Non-root user, read-only filesystem |
+| API access | Service account token (namespace-scoped) |
+| AI guardrails | Max 5 actions/hour, protected resources list |
+| CORS | Restricted to known origins |
 
-The AI Agent uses a three-pillar approach (no external LLM required):
-
-1. **Anomaly Vector** `A = [m, l, t]`
-   - `m` = metrics signal (CPU, RAM, thresholds)
-   - `l` = logs signal (keyword matching, recurrence)
-   - `t` = traces signal (latency, network patterns)
-
-2. **Health Decay Model**
-   ```
-   H = 100 × exp(−λ × |A|²)
-   ```
-   Where λ varies by severity (critical=2.8, warning=1.4, info=0.5)
-
-3. **Decision Tiers**
-   - Score ≥ 78 → Escalate
-   - Score ≥ 52 → Investigate
-   - Score ≥ 32 → Watch
-   - Score < 32 → Suppress
-
-## Data Flow
+### Protected Resources (Never Modified by AI)
 
 ```
-                    Every 30-60s
-OpenStack API  ────────────────►  Collector
-OpenShift API  ────────────────►  (APScheduler)
-                                      │
-                                      ▼
-                              ┌───────────────┐
-                              │  Alert Engine  │
-                              │  (threshold    │
-                              │   evaluation)  │
-                              └───────┬───────┘
-                                      │
-                                      ▼
-                              ┌───────────────┐
-                              │   AI Agent    │
-                              │  (vector +    │
-                              │   scoring)    │
-                              └───────┬───────┘
-                                      │
-                                      ▼
-                              ┌───────────────┐
-                              │  Remediation  │
-                              │  Agent        │
-                              │  (guardrails) │
-                              └───────┬───────┘
-                                      │
-                              ┌───────┴───────┐
-                              │  PostgreSQL   │
-                              └───────┬───────┘
-                                      │
-                               Every 3s (WS)
-                                      │
-                                      ▼
-                              ┌───────────────┐
-                              │   Frontend    │
-                              │   (React)     │
-                              └───────────────┘
+cloud-ai-monitor    (the application itself)
+postgresql          (the database)
 ```
 
-## Security Decisions
+---
 
-1. **Authentication**: Client-side only (demo/internal tool). For production with external access, add server-side JWT middleware.
-2. **Secrets**: All sensitive values in OpenShift Secrets, never in code or ConfigMaps.
-3. **TLS**: OpenShift Route handles TLS termination (edge).
-4. **CORS**: Restricted to known origins in production.
-5. **Non-root container**: Required by OpenShift, good security practice.
-6. **Remediation guardrails**: Max actions/hour, dry-run mode, safe namespace whitelist.
+## Prediction Engine
+
+Uses linear regression on historical metrics to forecast resource exhaustion:
+
+```
+Example Output:
+
+  Pod: cloud-ai-monitor
+  Metric: RAM
+  Current: 210 MB
+  Trend: increasing (+5 MB/hour)
+  Predicted exhaustion: 158 hours
+  Confidence: 0.72
+  Recommendation: No action needed
+
+  Pod: stress-test-xyz
+  Metric: CPU
+  Current: 950m
+  Trend: increasing (+200m/hour)
+  Predicted exhaustion: 0.25 hours (15 minutes)
+  Confidence: 0.89
+  Recommendation: SCALE IMMEDIATELY
+```
+
+---
+
+## Cost Model
+
+Calculated from real collected metrics:
+
+| Resource | Rate |
+|----------|------|
+| CPU | 0.045 EUR/core-hour |
+| RAM | 0.006 EUR/GB-hour |
+| Storage | 0.10 EUR/GB-month |
+| Pod overhead | 0.003 EUR/pod-hour |
+| VM base | 0.12 EUR/VM-hour |
+| Incident (manual) | 180 EUR/incident |
+| Downtime | 50 EUR/minute |
+
+---
 
 ## Why Single Container?
 
@@ -150,8 +215,8 @@ OpenShift API  ────────────────►  (APScheduler
 |--------|-----------------|----------------|
 | Resource usage | Lower (1 pod) | Higher (2 pods) |
 | Complexity | Simple | More networking |
-| Scaling | Adequate for this use case | Independent scaling |
-| Developer Sandbox fit | Perfect | Tight on resources |
+| Developer Sandbox fit | Ideal | Tight on resources |
 | Debugging | One log stream | Multiple streams |
+| Deployment | One image, one route | Multiple services |
 
-For this project's scale (< 1000 users, internal tool), single container is the right choice.
+For an internship project on a free sandbox, single container is the correct architecture. Production would use microservices.
