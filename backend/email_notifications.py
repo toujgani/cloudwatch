@@ -110,7 +110,7 @@ class IncidentReport:
     severity: str = "info"
     title: str = ""
     description: str = ""
-    namespace: str = "red1intheocean-dev"
+    namespace: str = ""
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
 
     # Alert details

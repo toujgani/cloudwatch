@@ -196,7 +196,7 @@ def _run_real_action(db: Session, plan: RemediationPlan, alert: Alert, operator:
         try:
             import requests as http_req
             s = openshift_client._session()
-            namespace = "red1intheocean-dev"
+            namespace = settings.KUBE_NAMESPACE or "default"
 
             # 1. List all pods in the namespace
             pods_url = openshift_client._url(f"/api/v1/namespaces/{namespace}/pods")

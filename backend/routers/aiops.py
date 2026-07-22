@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Alert, SeverityEnum, StatusEnum, AuditActionEnum
+from ..config import settings
 from ..ai_agent import analyze_alert, AnomalyVector, _KNOWLEDGE_BASE, _LAMBDA
 from ..remediation_agent import build_plan, choose_action
 from .. import audit as audit_trail
@@ -504,7 +505,7 @@ def deploy_stress_test(payload: StressTestIn):
         "kind": "Deployment",
         "metadata": {
             "name": "stress-test",
-            "namespace": "red1intheocean-dev",
+            "namespace": settings.KUBE_NAMESPACE or "default",
             "labels": {"app": "stress-test"},
         },
         "spec": {
@@ -530,7 +531,8 @@ def deploy_stress_test(payload: StressTestIn):
 
     # Apply via Kubernetes API
     import requests as http_requests
-    path = "/apis/apps/v1/namespaces/red1intheocean-dev/deployments"
+    namespace = settings.KUBE_NAMESPACE or "default"
+    path = f"/apis/apps/v1/namespaces/{namespace}/deployments"
     s = k8s._session()
     s.headers.update({"Content-Type": "application/json"})
 
@@ -572,7 +574,7 @@ def cleanup_stress_test(db: Session = Depends(get_db)):
     from ..models import Pod as PodModel, PodMetric as PodMetricModel
 
     PROTECTED = ["cloud-ai-monitor", "postgresql"]
-    namespace = "red1intheocean-dev"
+    namespace = settings.KUBE_NAMESPACE or "default"
 
     deleted_pods = []
     deleted_deployments = []
@@ -642,3 +644,48 @@ def cleanup_stress_test(db: Session = Depends(get_db)):
         "errors": errors if errors else None,
         "message": f"Nettoyage termine: {len(deleted_deployments)} deployments, {len(deleted_pods)} pods supprimes.",
     }
+
+
+# ─── VM Stress Test (OpenStack via SSH) ───────────────────────────────────────
+
+class VMStressTestIn(BaseModel):
+    """Configure a stress test on an OpenStack VM."""
+    vm_ip: str
+    ssh_user: str = "root"
+    ssh_password: Optional[str] = None
+    ssh_key_path: Optional[str] = None
+    mode: str = Field(default="cpu", description="cpu, ram, disk, network, mixed")
+    intensity: int = Field(default=75, ge=10, le=100)
+    duration_seconds: int = Field(default=120, ge=30, le=600)
+
+
+@router.post("/chaos/vm-stress")
+def deploy_vm_stress(payload: VMStressTestIn):
+    """Execute a stress test on an OpenStack VM via SSH."""
+    from ..vm_stress import VMStressConfig, execute_stress_test
+
+    config = VMStressConfig(
+        vm_id=payload.vm_ip,
+        vm_ip=payload.vm_ip,
+        ssh_user=payload.ssh_user,
+        ssh_password=payload.ssh_password,
+        ssh_key_path=payload.ssh_key_path,
+        mode=payload.mode,
+        intensity=payload.intensity,
+        duration_seconds=payload.duration_seconds,
+    )
+    return execute_stress_test(config)
+
+
+@router.delete("/chaos/vm-stress/{vm_ip}")
+def cleanup_vm_stress(vm_ip: str):
+    """Kill stress processes on a specific VM."""
+    from ..vm_stress import cleanup_stress_test
+    return cleanup_stress_test(vm_ip)
+
+
+@router.get("/chaos/vm-stress/active")
+def get_active_vm_stress():
+    """List all active VM stress tests."""
+    from ..vm_stress import get_active_tests
+    return get_active_tests()

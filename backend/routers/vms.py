@@ -164,3 +164,82 @@ def vm_predictions(db: Session = Depends(get_db)):
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "predictions": predict_all_vms(db, hours=2),
     }
+
+
+@router.get("/openstack/discovery")
+def openstack_discovery():
+    """
+    Full OpenStack environment discovery.
+    Returns all resources: VMs, networks, volumes, images, hypervisors, quotas.
+    Used by the dashboard for infrastructure overview.
+    """
+    from .. import openstack_client
+    from ..config import settings
+
+    if not settings.OS_AUTH_URL:
+        return {"connected": False, "message": "OpenStack non configure."}
+
+    try:
+        return openstack_client.discover_environment()
+    except Exception as e:
+        return {"connected": False, "error": str(e)[:300]}
+
+
+@router.get("/openstack/hypervisors")
+def openstack_hypervisors():
+    """List all compute hypervisors with resource allocation."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_hypervisors()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/networks")
+def openstack_networks():
+    """List all Neutron networks."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_networks()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/volumes")
+def openstack_volumes():
+    """List all Cinder volumes."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_volumes()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/images")
+def openstack_images():
+    """List all Glance images."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_images()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/floating-ips")
+def openstack_floating_ips():
+    """List all Neutron floating IPs."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_floating_ips()
+    except Exception as e:
+        return []
+
+
+@router.get("/openstack/security-groups")
+def openstack_security_groups():
+    """List all Neutron security groups."""
+    from .. import openstack_client
+    try:
+        return openstack_client.list_security_groups()
+    except Exception as e:
+        return []

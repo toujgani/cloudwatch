@@ -226,3 +226,248 @@ def parse_vm(server: dict, diagnostics: dict) -> dict:
         "disk_read_mb": round(disk_read, 2),
         "disk_write_mb":round(disk_write, 2),
     }
+
+
+# ─── Nova: Hypervisors & Flavors & Quotas ─────────────────────────────────────
+
+def list_hypervisors() -> list[dict]:
+    """List all compute hypervisors. GET /compute/v2.1/os-hypervisors/detail"""
+    url = f"{_endpoint('compute')}/os-hypervisors/detail"
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    if resp.status_code == 403:
+        logger.warning("OpenStack: no permission to list hypervisors")
+        return []
+    resp.raise_for_status()
+    return resp.json().get("hypervisors", [])
+
+
+def list_flavors() -> list[dict]:
+    """List all flavors. GET /compute/v2.1/flavors/detail"""
+    url = f"{_endpoint('compute')}/flavors/detail"
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("flavors", [])
+
+
+def get_compute_quotas() -> dict:
+    """Get compute quotas for the current project."""
+    project_id = None
+    # Extract project_id from token if available
+    try:
+        token_data = requests.get(
+            f"{settings.OS_AUTH_URL}/auth/tokens",
+            headers={"X-Auth-Token": _get_token(), "X-Subject-Token": _get_token()},
+            timeout=10,
+        ).json()
+        project_id = token_data.get("token", {}).get("project", {}).get("id")
+    except Exception:
+        pass
+
+    if not project_id:
+        return {}
+
+    url = f"{_endpoint('compute')}/os-quota-sets/{project_id}"
+    resp = requests.get(url, headers=_headers(), timeout=10)
+    if resp.status_code != 200:
+        return {}
+    return resp.json().get("quota_set", {})
+
+
+def get_compute_limits() -> dict:
+    """Get absolute compute limits (used vs max)."""
+    url = f"{_endpoint('compute')}/limits"
+    resp = requests.get(url, headers=_headers(), timeout=10)
+    resp.raise_for_status()
+    return resp.json().get("limits", {}).get("absolute", {})
+
+
+# ─── Neutron: Networks, Floating IPs, Security Groups, Routers ────────────────
+
+def list_networks() -> list[dict]:
+    """List all networks. GET /v2.0/networks"""
+    try:
+        url = f"{_endpoint('network')}/v2.0/networks"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("networks", [])
+
+
+def list_subnets() -> list[dict]:
+    """List all subnets."""
+    try:
+        url = f"{_endpoint('network')}/v2.0/subnets"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("subnets", [])
+
+
+def list_routers() -> list[dict]:
+    """List all routers."""
+    try:
+        url = f"{_endpoint('network')}/v2.0/routers"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("routers", [])
+
+
+def list_floating_ips() -> list[dict]:
+    """List all floating IPs."""
+    try:
+        url = f"{_endpoint('network')}/v2.0/floatingips"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("floatingips", [])
+
+
+def list_security_groups() -> list[dict]:
+    """List all security groups."""
+    try:
+        url = f"{_endpoint('network')}/v2.0/security-groups"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("security_groups", [])
+
+
+def list_ports() -> list[dict]:
+    """List all ports (interfaces)."""
+    try:
+        url = f"{_endpoint('network')}/v2.0/ports"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("ports", [])
+
+
+# ─── Glance: Images ───────────────────────────────────────────────────────────
+
+def list_images() -> list[dict]:
+    """List all images. GET /v2/images"""
+    try:
+        url = f"{_endpoint('image')}/v2/images"
+    except RuntimeError:
+        return []
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("images", [])
+
+
+# ─── Cinder: Volumes listing ──────────────────────────────────────────────────
+
+def list_volumes() -> list[dict]:
+    """List all block storage volumes."""
+    try:
+        base = _endpoint("volumev3")
+    except RuntimeError:
+        try:
+            base = _endpoint("volume")
+        except RuntimeError:
+            return []
+    url = f"{base}/volumes/detail"
+    resp = requests.get(url, headers=_headers(), timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("volumes", [])
+
+
+# ─── Discovery: Full environment scan ─────────────────────────────────────────
+
+def discover_environment() -> dict:
+    """
+    Full OpenStack environment discovery.
+    Returns all discoverable resources in one call.
+    Used by the frontend for the infrastructure overview.
+    """
+    result = {
+        "authenticated": False,
+        "services": [],
+        "compute": {},
+        "network": {},
+        "storage": {},
+        "images": {},
+    }
+
+    try:
+        _get_token()
+        result["authenticated"] = True
+        result["services"] = list(_token_cache.get("catalog", {}).keys())
+    except Exception as e:
+        result["error"] = str(e)
+        return result
+
+    # Compute
+    try:
+        servers = list_servers()
+        limits = get_compute_limits()
+        result["compute"] = {
+            "instances": len(servers),
+            "instances_active": sum(1 for s in servers if s.get("status") == "ACTIVE"),
+            "instances_shutoff": sum(1 for s in servers if s.get("status") == "SHUTOFF"),
+            "instances_error": sum(1 for s in servers if s.get("status") == "ERROR"),
+            "vcpus_used": limits.get("totalCoresUsed", 0),
+            "vcpus_max": limits.get("maxTotalCores", 0),
+            "ram_used_mb": limits.get("totalRAMUsed", 0),
+            "ram_max_mb": limits.get("maxTotalRAMSize", 0),
+            "instances_used": limits.get("totalInstancesUsed", 0),
+            "instances_max": limits.get("maxTotalInstances", 0),
+        }
+    except Exception as e:
+        result["compute"] = {"error": str(e)}
+
+    # Hypervisors
+    try:
+        hypervisors = list_hypervisors()
+        result["compute"]["hypervisors"] = len(hypervisors)
+        result["compute"]["hypervisor_vcpus"] = sum(h.get("vcpus", 0) for h in hypervisors)
+        result["compute"]["hypervisor_ram_gb"] = round(sum(h.get("memory_mb", 0) for h in hypervisors) / 1024, 1)
+    except Exception:
+        pass
+
+    # Network
+    try:
+        networks = list_networks()
+        floating_ips = list_floating_ips()
+        security_groups = list_security_groups()
+        routers = list_routers()
+        result["network"] = {
+            "networks": len(networks),
+            "floating_ips": len(floating_ips),
+            "floating_ips_active": sum(1 for f in floating_ips if f.get("status") == "ACTIVE"),
+            "security_groups": len(security_groups),
+            "routers": len(routers),
+        }
+    except Exception as e:
+        result["network"] = {"error": str(e)}
+
+    # Storage
+    try:
+        volumes = list_volumes()
+        result["storage"] = {
+            "volumes": len(volumes),
+            "volumes_in_use": sum(1 for v in volumes if v.get("status") == "in-use"),
+            "volumes_available": sum(1 for v in volumes if v.get("status") == "available"),
+            "total_size_gb": sum(v.get("size", 0) for v in volumes),
+        }
+    except Exception as e:
+        result["storage"] = {"error": str(e)}
+
+    # Images
+    try:
+        images = list_images()
+        result["images"] = {
+            "count": len(images),
+            "total_size_gb": round(sum(i.get("size", 0) for i in images) / (1024**3), 1),
+        }
+    except Exception as e:
+        result["images"] = {"error": str(e)}
+
+    return result

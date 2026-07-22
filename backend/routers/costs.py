@@ -72,9 +72,25 @@ def cost_summary(hours: int = Query(default=720, ge=1, le=87600), db: Session = 
     vm_base_cost = active_vms * PRICING["vm_base_hour"] * hours
 
     # ── Storage costs ─────────────────────────────────────────────────────────
-    # Read from actual PVC usage (2Gi currently provisioned)
-    storage_gb = 2  # TODO: read from K8s PVC API dynamically
-    storage_cost = storage_gb * PRICING["storage_per_gb_month"] * (hours / 720)
+    # Read from actual PVC usage via K8s API
+    storage_gb = 0
+    try:
+        from .. import openshift_client as k8s
+        namespace = settings.KUBE_NAMESPACE or "red1intheocean-dev"
+        s = k8s._session()
+        path = f"/api/v1/namespaces/{namespace}/persistentvolumeclaims"
+        resp = s.get(k8s._url(path), timeout=10)
+        if resp.status_code == 200:
+            for pvc in resp.json().get("items", []):
+                spec = pvc.get("spec", {}).get("resources", {}).get("requests", {})
+                storage_str = spec.get("storage", "0")
+                if storage_str.endswith("Gi"):
+                    storage_gb += int(storage_str[:-2])
+                elif storage_str.endswith("Mi"):
+                    storage_gb += int(storage_str[:-2]) / 1024
+    except Exception:
+        storage_gb = 2  # fallback
+    storage_cost = max(storage_gb, 1) * PRICING["storage_per_gb_month"] * (hours / 720)
 
     # ── Network (estimated from pod activity) ─────────────────────────────────
     # Estimate: each pod generates ~50MB/hour of network traffic

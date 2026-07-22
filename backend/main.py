@@ -20,6 +20,7 @@ from .routers import audit as audit_router
 from .routers import aiops as aiops_router
 from .routers import auth as auth_router
 from .routers import costs as costs_router
+from .routers import admin as admin_router
 from .websocket_manager import manager, broadcast_loop
 from .seed import seed_users
 
@@ -126,6 +127,7 @@ app.include_router(kubernetes.router,    prefix="/api")
 app.include_router(audit_router.router,  prefix="/api")
 app.include_router(aiops_router.router,  prefix="/api")
 app.include_router(costs_router.router,  prefix="/api")
+app.include_router(admin_router.router,  prefix="/api")
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
