@@ -41,7 +41,7 @@ const routeRoles: Record<string, UserRole[]> = {
   '/kubernetes': ['admin'],
   '/aiops': ['admin'],
   '/audit': ['admin'],
-  '/admin': ['admin'],
+  '/admin': ['admin', 'subadmin'],
 }
 
 function readStoredUser(): AuthUser | null {

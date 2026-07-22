@@ -15,8 +15,8 @@ router = APIRouter(prefix="/admin", tags=["Administration"])
 
 
 def _require_admin(current_user: User = Depends(require_auth)) -> User:
-    """Dependency: only admins can access admin endpoints."""
-    if current_user.role != RoleEnum.admin:
+    """Dependency: only admin and subadmin can access admin endpoints."""
+    if current_user.role not in (RoleEnum.admin, RoleEnum.subadmin):
         raise HTTPException(status_code=403, detail="Admin access required.")
     return current_user
 
@@ -39,14 +39,29 @@ def list_users(admin: User = Depends(_require_admin), db: Session = Depends(get_
 
 @router.patch("/users/{user_id}/role")
 def change_user_role(user_id: int, role: str, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
-    """Change a user's role. Cannot demote yourself."""
+    """
+    Change a user's role.
+    Rules:
+    - Cannot demote yourself
+    - Only admin can promote/demote (subadmin cannot)
+    - Cannot promote anyone to admin (only one admin exists)
+    - Cannot demote the admin account
+    """
     if admin.id == user_id:
         raise HTTPException(status_code=400, detail="Impossible de modifier votre propre role.")
+    if admin.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Seul l'administrateur principal peut modifier les roles.")
+
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    if role not in ("admin", "operator", "viewer"):
-        raise HTTPException(status_code=400, detail="Invalid role.")
+    if user.role == RoleEnum.admin:
+        raise HTTPException(status_code=400, detail="Impossible de modifier le role de l'administrateur principal.")
+    if role == "admin":
+        raise HTTPException(status_code=400, detail="Il ne peut y avoir qu'un seul administrateur.")
+    if role not in ("subadmin", "operator", "viewer"):
+        raise HTTPException(status_code=400, detail="Role invalide. Roles disponibles: subadmin, operator, viewer.")
+
     user.role = RoleEnum(role)
     db.commit()
     return {"status": "updated", "username": user.username, "new_role": role}
@@ -54,12 +69,16 @@ def change_user_role(user_id: int, role: str, admin: User = Depends(_require_adm
 
 @router.patch("/users/{user_id}/disable")
 def disable_user(user_id: int, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
-    """Disable a user account. Cannot disable yourself."""
+    """Disable a user account. Cannot disable yourself or the admin."""
     if admin.id == user_id:
         raise HTTPException(status_code=400, detail="Impossible de desactiver votre propre compte.")
+    if admin.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Seul l'administrateur principal peut desactiver des comptes.")
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+    if user.role == RoleEnum.admin:
+        raise HTTPException(status_code=400, detail="Impossible de desactiver l'administrateur principal.")
     user.is_active = False
     db.commit()
     return {"status": "disabled", "username": user.username}
