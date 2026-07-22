@@ -15,6 +15,7 @@ import LoginPage from './components/LoginPage'
 import AIOpsPage from './components/AIOpsPage'
 import AuditLogPage from './components/AuditLogPage'
 import CostPage from './components/CostPage'
+import AdminPage from './components/AdminPage'
 import { clearStoredToken } from './api/client'
 import type { AuthUser, UserRole, WsSnapshot } from './types'
 import './index.css'
@@ -40,6 +41,7 @@ const routeRoles: Record<string, UserRole[]> = {
   '/kubernetes': ['admin'],
   '/aiops': ['admin'],
   '/audit': ['admin'],
+  '/admin': ['admin'],
 }
 
 function readStoredUser(): AuthUser | null {
@@ -206,6 +208,7 @@ export default function App() {
             <Route path="/aiops" element={<ProtectedRoute user={user} path="/aiops"><AIOpsPage /></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute user={user} path="/audit"><AuditLogPage /></ProtectedRoute>} />
             <Route path="/costs" element={<ProtectedRoute user={user} path="/costs"><CostPage /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute user={user} path="/admin"><AdminPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to={homeByRole[user.role]} replace />} />
           </Routes>
         </main>

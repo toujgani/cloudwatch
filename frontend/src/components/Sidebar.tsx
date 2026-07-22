@@ -13,6 +13,7 @@ const links = [
   { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin'] },
   { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin'] },
   { to: '/audit', icon: 'AUD', label: 'Audit Trail', roles: ['admin'] },
+  { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin'] },
 ]
 
 const adminModes: { role: UserRole; label: string }[] = [
