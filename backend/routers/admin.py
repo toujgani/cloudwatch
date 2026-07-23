@@ -1,35 +1,25 @@
 """
-Admin Console Router — Full administration panel.
-User management, RBAC, password management, branding, sessions, AI history.
-Restricted to admin/subadmin roles with RBAC enforcement.
+Admin Console Router — User management, sessions.
+Restricted to admin role with RBAC enforcement.
 """
 import secrets
 import string
-import os
-import shutil
-from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy import desc
 
 from ..database import get_db
 from ..models import (
-    User, RoleEnum, AuditLog, AuditActionEnum, Alert,
-    LoginSession, BrandingConfig
+    User, RoleEnum, AuditActionEnum,
+    LoginSession,
 )
 from ..routers.auth import require_auth, hash_password
 from .. import audit as audit_trail
-from ..runtime_detection import runtime_info_dict
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
-
-# Persistent storage for branding assets
-BRANDING_DIR = Path(os.getenv("BRANDING_STORAGE_PATH", "/app/branding"))
-BRANDING_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ─── RBAC Dependencies ────────────────────────────────────────────────────────
@@ -41,13 +31,7 @@ def _require_admin(current_user: User = Depends(require_auth)) -> User:
     return current_user
 
 
-def _require_admin_or_subadmin(current_user: User = Depends(require_auth)) -> User:
-    """Admin and subadmin can access most admin endpoints (except user management)."""
-    if current_user.role not in (RoleEnum.admin, RoleEnum.subadmin):
-        raise HTTPException(status_code=403, detail="Admin or Sub-Admin access required.")
-    return current_user
-
-
+# ─── Schemas ──────────────────────────────────────────────────────────────────
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 
 class CreateUserIn(BaseModel):
@@ -66,18 +50,10 @@ class ChangeRoleIn(BaseModel):
     role: str
 
 
-# ─── Runtime Detection ────────────────────────────────────────────────────────
-
-@router.get("/runtime")
-def get_runtime_info(admin: User = Depends(_require_admin_or_subadmin)):
-    """Get current runtime environment detection info."""
-    return runtime_info_dict()
-
-
 # ─── User Management ─────────────────────────────────────────────────────────
 
 @router.get("/users")
-def list_users(admin: User = Depends(_require_admin_or_subadmin), db: Session = Depends(get_db)):
+def list_users(admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
     """List all registered users with full details."""
     users = db.query(User).order_by(User.created_at).all()
     result = []
@@ -339,7 +315,7 @@ def force_password_change(user_id: int, admin: User = Depends(_require_admin), d
 @router.get("/sessions")
 def list_sessions(
     limit: int = 50,
-    admin: User = Depends(_require_admin_or_subadmin),
+    admin: User = Depends(_require_admin),
     db: Session = Depends(get_db),
 ):
     """List all login sessions with IP, user agent, and timestamps."""
@@ -376,179 +352,6 @@ def terminate_session(session_id: int, admin: User = Depends(_require_admin), db
     session.is_active = False
     db.commit()
     return {"status": "terminated", "session_id": session_id}
-
-
-# ─── AI History ───────────────────────────────────────────────────────────────
-
-@router.get("/ai-history")
-def ai_execution_history(
-    limit: int = 50,
-    admin: User = Depends(_require_admin_or_subadmin),
-    db: Session = Depends(get_db),
-):
-    """AI remediation execution history."""
-    alerts = (
-        db.query(Alert)
-        .filter(Alert.remediation_action.isnot(None))
-        .order_by(desc(Alert.remediation_updated_at))
-        .limit(limit)
-        .all()
-    )
-    return [
-        {
-            "alert_id": a.id,
-            "title": a.title,
-            "severity": a.severity.value,
-            "ai_score": a.ai_score,
-            "ai_decision": a.ai_decision,
-            "ai_confidence": a.ai_confidence,
-            "remediation_action": a.remediation_action,
-            "remediation_status": a.remediation_status,
-            "remediation_message": a.remediation_message[:200] if a.remediation_message else None,
-            "executed_at": a.remediation_updated_at.isoformat() if a.remediation_updated_at else None,
-        }
-        for a in alerts
-    ]
-
-
-# ─── Platform Stats ──────────────────────────────────────────────────────────
-
-@router.get("/stats")
-def admin_stats(admin: User = Depends(_require_admin_or_subadmin), db: Session = Depends(get_db)):
-    """Platform-wide statistics for the admin dashboard."""
-    total_users = db.query(User).count()
-    active_users = db.query(User).filter(User.is_active == True).count()
-    locked_users = db.query(User).filter(User.is_locked == True).count()
-    total_alerts = db.query(Alert).count()
-    total_remediations = db.query(Alert).filter(Alert.remediation_status == "applied").count()
-    total_audit_entries = db.query(AuditLog).count()
-
-    # Role distribution
-    role_dist = {}
-    for role in RoleEnum:
-        role_dist[role.value] = db.query(User).filter(User.role == role).count()
-
-    # AI stats
-    ai_actions_24h = db.query(AuditLog).filter(
-        AuditLog.action.in_([AuditActionEnum.remediation_applied, AuditActionEnum.remediation_blocked]),
-        AuditLog.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0),
-    ).count()
-
-    # Active sessions
-    active_sessions = db.query(LoginSession).filter(LoginSession.is_active == True).count()
-
-    return {
-        "users": {
-            "total": total_users,
-            "active": active_users,
-            "locked": locked_users,
-            "roles": role_dist,
-        },
-        "alerts": {"total": total_alerts, "remediations_applied": total_remediations},
-        "audit": {"total_entries": total_audit_entries},
-        "ai": {"actions_today": ai_actions_24h},
-        "sessions": {"active": active_sessions},
-        "runtime": runtime_info_dict(),
-    }
-
-
-# ─── Branding ─────────────────────────────────────────────────────────────────
-
-@router.get("/branding")
-def get_branding(db: Session = Depends(get_db)):
-    """Get current branding configuration (public endpoint)."""
-    config = db.query(BrandingConfig).first()
-    if not config:
-        return {
-            "company_name": "CIRES Technologies",
-            "app_name": "Cloud AI Monitor",
-            "logo_url": None,
-            "app_logo_url": None,
-            "favicon_url": None,
-            "background_url": None,
-        }
-    return {
-        "company_name": config.company_name,
-        "app_name": config.app_name,
-        "logo_url": f"/api/admin/branding/files/{config.logo_path}" if config.logo_path else None,
-        "app_logo_url": f"/api/admin/branding/files/{config.app_logo_path}" if config.app_logo_path else None,
-        "favicon_url": f"/api/admin/branding/files/{config.favicon_path}" if config.favicon_path else None,
-        "background_url": f"/api/admin/branding/files/{config.background_path}" if config.background_path else None,
-    }
-
-
-@router.put("/branding")
-def update_branding_text(
-    company_name: str = "CIRES Technologies",
-    app_name: str = "Cloud AI Monitor",
-    admin: User = Depends(_require_admin),
-    db: Session = Depends(get_db),
-):
-    """Update branding text fields."""
-    config = db.query(BrandingConfig).first()
-    if not config:
-        config = BrandingConfig()
-        db.add(config)
-    config.company_name = company_name
-    config.app_name = app_name
-    config.updated_at = datetime.utcnow()
-    db.commit()
-    return {"status": "updated", "company_name": company_name, "app_name": app_name}
-
-
-@router.post("/branding/upload/{asset_type}")
-async def upload_branding_asset(
-    asset_type: str,
-    file: UploadFile = File(...),
-    admin: User = Depends(_require_admin),
-    db: Session = Depends(get_db),
-):
-    """Upload a branding asset (logo, app_logo, favicon, background)."""
-    valid_types = ["logo", "app_logo", "favicon", "background"]
-    if asset_type not in valid_types:
-        raise HTTPException(status_code=400, detail=f"Invalid asset type. Options: {valid_types}")
-
-    # Validate file type
-    allowed_extensions = {".png", ".jpg", ".jpeg", ".svg", ".ico", ".webp"}
-    ext = Path(file.filename).suffix.lower() if file.filename else ""
-    if ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {allowed_extensions}")
-
-    # Save file
-    filename = f"{asset_type}{ext}"
-    filepath = BRANDING_DIR / filename
-    content = await file.read()
-    filepath.write_bytes(content)
-
-    # Update database
-    config = db.query(BrandingConfig).first()
-    if not config:
-        config = BrandingConfig()
-        db.add(config)
-
-    if asset_type == "logo":
-        config.logo_path = filename
-    elif asset_type == "app_logo":
-        config.app_logo_path = filename
-    elif asset_type == "favicon":
-        config.favicon_path = filename
-    elif asset_type == "background":
-        config.background_path = filename
-
-    config.updated_at = datetime.utcnow()
-    db.commit()
-
-    return {"status": "uploaded", "asset_type": asset_type, "filename": filename}
-
-
-@router.get("/branding/files/{filename}")
-def serve_branding_file(filename: str):
-    """Serve a branding asset file."""
-    from fastapi.responses import FileResponse
-    filepath = BRANDING_DIR / filename
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail="File not found.")
-    return FileResponse(str(filepath))
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
