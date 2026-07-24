@@ -1,12 +1,30 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { getStoredToken, clearStoredToken } from '../api/client'
 
 const api = axios.create({ baseURL: '/api' })
+
+// Attach token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('cloudwatch-token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const token = getStoredToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
+
+// Handle 401 — token expired or invalid, force re-login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      clearStoredToken()
+      localStorage.removeItem('cloudwatch-auth-user')
+      window.location.reload()
+    }
+    return Promise.reject(error)
+  }
+)
 
 interface UserEntry {
   id: number
@@ -71,7 +89,14 @@ export default function AdminPage() {
       setPasswordModal({ username: res.data.username, password: res.data.temporary_password })
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la creation')
+      const detail = e?.response?.data?.detail
+      const status = e?.response?.status
+      if (status === 401) return // interceptor handles re-login
+      if (status === 403) {
+        setError('Acces refuse. Vous devez etre connecte en tant qu\'admin.')
+        return
+      }
+      alert(detail || 'Erreur lors de la creation')
     }
   }
 
