@@ -65,25 +65,41 @@ def create_access_token(data: dict) -> str:
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User | None:
     """Decode JWT and return User. Returns None if no token."""
+    import logging
+    _logger = logging.getLogger("auth.debug")
+    _logger.info("[AUTH] get_current_user called. token present: %s, token length: %d", bool(token), len(token) if token else 0)
     if not token:
+        _logger.warning("[AUTH] Token is None/empty — will return None")
         return None
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+        _logger.info("[AUTH] JWT decoded successfully. sub=%s", username)
         if username is None:
+            _logger.warning("[AUTH] JWT payload has no 'sub' field")
             return None
-    except JWTError:
+    except JWTError as e:
+        _logger.warning("[AUTH] JWT decode FAILED: %s", str(e))
         return None
     user = db.query(User).filter(User.username == username).first()
-    if user and not user.is_active:
+    if not user:
+        _logger.warning("[AUTH] User '%s' NOT FOUND in database", username)
         return None
+    if not user.is_active:
+        _logger.warning("[AUTH] User '%s' is INACTIVE", username)
+        return None
+    _logger.info("[AUTH] User authenticated: id=%d, username=%s, role=%s", user.id, user.username, user.role.value)
     return user
 
 
 def require_auth(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """Strict auth dependency — raises 401 if not authenticated."""
+    import logging
+    _logger = logging.getLogger("auth.debug")
+    _logger.info("[AUTH] require_auth called. token present: %s", bool(token))
     user = get_current_user(token, db)
     if user is None:
+        _logger.error("[AUTH] require_auth FAILED — returning 401. Token was: %s", "present" if token else "MISSING")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -185,7 +201,13 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
     user.last_login_at = datetime.utcnow()
     user.last_activity_at = datetime.utcnow()
 
-    # Record login session
+    # Mark previous sessions from same user as inactive (one active session per user)
+    db.query(LoginSession).filter(
+        LoginSession.user_id == user.id,
+        LoginSession.is_active == True,
+    ).update({"is_active": False})
+
+    # Record new login session
     ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
     user_agent = request.headers.get("user-agent", "unknown")
     browser, os_name = _parse_user_agent(user_agent)
@@ -240,3 +262,14 @@ def change_own_password(
     current_user.force_password_change = False
     db.commit()
     return {"status": "password_changed"}
+
+
+@router.post("/logout")
+def logout(current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    """Logout — mark all active sessions for this user as inactive."""
+    db.query(LoginSession).filter(
+        LoginSession.user_id == current_user.id,
+        LoginSession.is_active == True,
+    ).update({"is_active": False})
+    db.commit()
+    return {"status": "logged_out"}

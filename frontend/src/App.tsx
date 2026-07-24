@@ -15,7 +15,7 @@ import LoginPage from './components/LoginPage'
 import AIOpsPage from './components/AIOpsPage'
 import CostPage from './components/CostPage'
 import AdminPage from './components/AdminPage'
-import { clearStoredToken } from './api/client'
+import { clearStoredToken, getStoredToken } from './api/client'
 import type { AuthUser, UserRole, WsSnapshot } from './types'
 import './index.css'
 
@@ -101,6 +101,14 @@ export default function App() {
   }
 
   const logout = () => {
+    // Mark session as inactive on the server
+    const token = getStoredToken()
+    if (token) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {}) // fire-and-forget
+    }
     clearStoredToken()
     localStorage.removeItem(STORAGE_KEY)
     setUser(null)

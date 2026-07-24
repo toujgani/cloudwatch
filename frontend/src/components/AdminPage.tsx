@@ -10,17 +10,17 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  console.log(`[AdminPage REQUEST] ${config.method?.toUpperCase()} ${config.url} — Authorization: ${token ? 'Bearer ' + token.substring(0, 20) + '...' : 'NONE'}`)
   return config
 })
 
-// Handle 401 — token expired or invalid, force re-login
+// Handle 401 — log it but don't clear token (let the user see the error)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      clearStoredToken()
-      localStorage.removeItem('cloudwatch-auth-user')
-      window.location.reload()
+      console.error('[AdminPage] 401 received on:', error.config?.method?.toUpperCase(), error.config?.url)
+      console.error('[AdminPage] Token at time of error:', getStoredToken() ? 'present (' + getStoredToken()!.length + ' chars)' : 'MISSING')
     }
     return Promise.reject(error)
   }
