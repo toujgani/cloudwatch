@@ -32,7 +32,6 @@ def _require_admin(current_user: User = Depends(require_auth)) -> User:
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
-# ─── Schemas ──────────────────────────────────────────────────────────────────
 
 class CreateUserIn(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
