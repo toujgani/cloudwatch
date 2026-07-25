@@ -23,9 +23,6 @@ data:
 
   # Collector
   COLLECT_INTERVAL_SECONDS: "30"
-  MOCK_MODE: "false"
-  MOCK_OPENSTACK: "false"
-  MOCK_OPENSHIFT: "false"
 
   # Alert thresholds
   ALERT_CPU_WARNING: "70"

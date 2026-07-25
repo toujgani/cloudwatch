@@ -2,12 +2,11 @@
 Admin Console Router — User management, sessions.
 Restricted to admin role with RBAC enforcement.
 """
-import logging
 import secrets
 import string
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -17,10 +16,8 @@ from ..models import (
     User, RoleEnum, AuditActionEnum,
     LoginSession,
 )
-from ..routers.auth import require_auth, hash_password, oauth2_scheme, get_current_user
+from ..routers.auth import require_auth, hash_password
 from .. import audit as audit_trail
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -29,38 +26,9 @@ router = APIRouter(prefix="/admin", tags=["Administration"])
 
 def _require_admin(current_user: User = Depends(require_auth)) -> User:
     """Only admin can access full admin endpoints."""
-    logger.info("[ADMIN AUTH] require_auth returned user: %s (role: %s)", current_user.username, current_user.role.value)
     if current_user.role != RoleEnum.admin:
         raise HTTPException(status_code=403, detail="Administrator access required.")
     return current_user
-
-
-# Debug endpoint to trace auth on admin routes
-@router.get("/debug-auth")
-def debug_auth(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """Temporary debug endpoint — traces auth chain."""
-    auth_header = request.headers.get("authorization", "MISSING")
-    logger.info("[ADMIN DEBUG] Authorization header: %s", auth_header[:50] if auth_header else "NONE")
-    logger.info("[ADMIN DEBUG] OAuth2 extracted token: %s", token[:30] if token else "NONE/EMPTY")
-    
-    user = get_current_user(token, db)
-    if user:
-        logger.info("[ADMIN DEBUG] User found: id=%d, username=%s, role=%s, active=%s", user.id, user.username, user.role.value, user.is_active)
-    else:
-        logger.info("[ADMIN DEBUG] get_current_user returned None. Token was: %s", "present" if token else "absent")
-    
-    return {
-        "auth_header_present": auth_header != "MISSING",
-        "auth_header_prefix": auth_header[:20] if auth_header != "MISSING" else None,
-        "token_extracted": token is not None and len(token) > 0 if token else False,
-        "token_length": len(token) if token else 0,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role.value,
-            "is_active": user.is_active,
-        } if user else None,
-    }
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -122,13 +90,8 @@ def list_users(admin: User = Depends(_require_admin), db: Session = Depends(get_
 
 
 @router.post("/users")
-def create_user(request: Request, payload: CreateUserIn, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
+def create_user(payload: CreateUserIn, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
     """Create a new user account. Only admin can create users (not subadmin)."""
-    # Debug logging
-    auth_header = request.headers.get("authorization", "MISSING")
-    logger.info("[ADMIN POST /users] Authorization header: %s", auth_header[:50] if auth_header else "NONE")
-    logger.info("[ADMIN POST /users] Admin user resolved: %s (role: %s)", admin.username, admin.role.value)
-    
     # Validate role
     valid_roles = ["viewer", "operator", "subadmin"]
     if payload.role not in valid_roles:

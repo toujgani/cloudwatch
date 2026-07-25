@@ -48,11 +48,6 @@ class Settings(BaseSettings):
     ALERT_EMAIL_TO: str = ""
     SMTP_USE_TLS: bool = True
 
-    # Mock mode — disabled. No mock data. Empty if source unreachable.
-    MOCK_MODE: bool = False
-    MOCK_OPENSTACK: bool = False
-    MOCK_OPENSHIFT: bool = False
-
     # Grafana API
     GRAFANA_URL: str = "http://localhost:3000"
     GRAFANA_API_TOKEN: str = ""

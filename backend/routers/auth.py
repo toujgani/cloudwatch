@@ -65,41 +65,27 @@ def create_access_token(data: dict) -> str:
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User | None:
     """Decode JWT and return User. Returns None if no token."""
-    import logging
-    _logger = logging.getLogger("auth.debug")
-    _logger.info("[AUTH] get_current_user called. token present: %s, token length: %d", bool(token), len(token) if token else 0)
     if not token:
-        _logger.warning("[AUTH] Token is None/empty — will return None")
         return None
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        _logger.info("[AUTH] JWT decoded successfully. sub=%s", username)
         if username is None:
-            _logger.warning("[AUTH] JWT payload has no 'sub' field")
             return None
-    except JWTError as e:
-        _logger.warning("[AUTH] JWT decode FAILED: %s", str(e))
+    except JWTError:
         return None
     user = db.query(User).filter(User.username == username).first()
     if not user:
-        _logger.warning("[AUTH] User '%s' NOT FOUND in database", username)
         return None
     if not user.is_active:
-        _logger.warning("[AUTH] User '%s' is INACTIVE", username)
         return None
-    _logger.info("[AUTH] User authenticated: id=%d, username=%s, role=%s", user.id, user.username, user.role.value)
     return user
 
 
 def require_auth(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """Strict auth dependency — raises 401 if not authenticated."""
-    import logging
-    _logger = logging.getLogger("auth.debug")
-    _logger.info("[AUTH] require_auth called. token present: %s", bool(token))
     user = get_current_user(token, db)
     if user is None:
-        _logger.error("[AUTH] require_auth FAILED — returning 401. Token was: %s", "present" if token else "MISSING")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

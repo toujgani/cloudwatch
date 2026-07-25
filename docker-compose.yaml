@@ -39,8 +39,7 @@ services:
       # Security
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-random-32-chars}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
-      # OpenStack (configure via .env file)
-      OS_AUTH_URL: ${OS_AUTH_URL:-}
+      # OpenStack (configure via .env file)      OS_AUTH_URL: ${OS_AUTH_URL:-}
       OS_USERNAME: ${OS_USERNAME:-}
       OS_PASSWORD: ${OS_PASSWORD:-}
       OS_PROJECT_NAME: ${OS_PROJECT_NAME:-}

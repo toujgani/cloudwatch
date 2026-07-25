@@ -105,15 +105,6 @@ app.add_middleware(
 # Security headers middleware
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    # Debug: log auth header on admin mutation requests
-    if request.url.path.startswith("/api/admin") and request.method != "GET":
-        auth_header = request.headers.get("authorization")
-        logger.info(
-            "[MIDDLEWARE DEBUG] %s %s — Authorization: %s",
-            request.method,
-            request.url.path,
-            auth_header[:40] + "..." if auth_header else "MISSING/NONE",
-        )
     response: Response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
