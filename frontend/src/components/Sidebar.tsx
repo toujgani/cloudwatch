@@ -12,6 +12,7 @@ const links = [
   { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin', 'subadmin'] },
   { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin', 'subadmin'] },
   { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin', 'subadmin'] },
+  { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin'] },
 ]
 
 const adminModes: { role: UserRole; label: string }[] = [

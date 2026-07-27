@@ -14,6 +14,7 @@ import GrafanaVisualizationsPage from './components/GrafanaVisualizationsPage'
 import LoginPage from './components/LoginPage'
 import AIOpsPage from './components/AIOpsPage'
 import CostPage from './components/CostPage'
+import AdminPage from './components/AdminPage'
 import { clearStoredToken, getStoredToken } from './api/client'
 import type { AuthUser, UserRole, WsSnapshot } from './types'
 import './index.css'
@@ -39,6 +40,7 @@ const routeRoles: Record<string, UserRole[]> = {
   '/costs': ['admin', 'subadmin', 'viewer'],
   '/kubernetes': ['admin', 'subadmin'],
   '/aiops': ['admin', 'subadmin'],
+  '/admin': ['admin'],
 }
 
 function readStoredUser(): AuthUser | null {
@@ -222,6 +224,7 @@ export default function App() {
             <Route path="/kubernetes" element={<ProtectedRoute user={user} path="/kubernetes"><KubernetesPage /></ProtectedRoute>} />
             <Route path="/aiops" element={<ProtectedRoute user={user} path="/aiops"><AIOpsPage /></ProtectedRoute>} />
             <Route path="/costs" element={<ProtectedRoute user={user} path="/costs"><CostPage /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute user={user} path="/admin"><AdminPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to={homeByRole[user.role]} replace />} />
           </Routes>
         </main>
