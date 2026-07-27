@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     # Mock mode — generate fake data when source is unreachable or for demos
     MOCK_OPENSTACK: bool = False
     MOCK_OPENSHIFT: bool = False
+    MOCK_KUBERNETES: bool = False
 
     # Email notifications
     EMAIL_ALERTS_ENABLED: bool = False

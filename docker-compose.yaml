@@ -73,6 +73,7 @@ services:
       # Mock mode
       MOCK_OPENSTACK: ${MOCK_OPENSTACK:-false}
       MOCK_OPENSHIFT: ${MOCK_OPENSHIFT:-false}
+      MOCK_KUBERNETES: ${MOCK_KUBERNETES:-false}
       # Production
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-}

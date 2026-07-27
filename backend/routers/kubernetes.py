@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
 from .. import openshift_client as k8s_client
+from ..config import settings
 
 router = APIRouter(prefix="/kubernetes", tags=["Kubernetes"])
 
@@ -67,6 +68,44 @@ def _pods():
 
 @router.get("/cluster")
 def cluster_overview():
+    if settings.MOCK_KUBERNETES:
+        from ..mock_data import mock_kubernetes_cluster, mock_kubernetes_nodes, mock_kubernetes_namespaces
+        cluster = mock_kubernetes_cluster()
+        nodes_data = mock_kubernetes_nodes()
+        return {
+            "cluster": {
+                "name": "openshift-main",
+                "provider": "OpenShift/Kubernetes",
+                "mode": "mock",
+                "health_score": cluster["health_score"],
+            },
+            "capacity": {
+                "nodes": cluster["nodes_total"],
+                "ready_nodes": cluster["nodes_ready"],
+                "cpu_cores": cluster["cpu_cores_total"],
+                "memory_gb": cluster["ram_gb_total"],
+                "pod_slots": cluster["nodes_total"] * 110,
+                "pods_used": cluster["pods_total"],
+                "pod_slot_usage_percent": round(cluster["pods_total"] / (cluster["nodes_total"] * 110) * 100, 1),
+                "avg_cpu_usage_percent": cluster["cpu_percent_avg"],
+                "avg_memory_usage_percent": cluster["ram_percent_avg"],
+            },
+            "workloads": {
+                "pods": cluster["pods_total"],
+                "running": cluster["pods_total"] - cluster["pods_failed"],
+                "pending": 0,
+                "failed": cluster["pods_failed"],
+                "namespaces": cluster["namespaces"],
+                "restart_total": 3,
+            },
+            "risk": {
+                "pressure_nodes": 0,
+                "disk_pressure_nodes": 0,
+                "memory_pressure_nodes": 0,
+                "saturated_nodes": sum(1 for n in nodes_data if n["cpu_percent"] >= 80),
+            },
+        }
+
     nodes = _real_nodes()
     pods = _pods()
     namespaces = sorted({p["namespace"] for p in pods})
@@ -130,11 +169,32 @@ def cluster_overview():
 
 @router.get("/nodes")
 def nodes():
+    if settings.MOCK_KUBERNETES:
+        from ..mock_data import mock_kubernetes_nodes
+        return [{
+            "name": n["name"], "role": n["role"], "status": n["status"],
+            "kubelet_version": n["kubelet_version"], "os_image": n["os_image"],
+            "cpu_capacity": int(n["cpu_capacity"]), "memory_capacity_gb": 32 if "32" in n["memory_capacity"] else 16,
+            "pods_capacity": int(n["pods_capacity"]),
+            "cpu_usage_percent": n["cpu_percent"], "memory_usage_percent": n["ram_percent"],
+            "pods_used": n["pods_running"],
+            "disk_pressure": False, "memory_pressure": False,
+        } for n in mock_kubernetes_nodes()]
     return _real_nodes()
 
 
 @router.get("/namespaces")
 def namespaces():
+    if settings.MOCK_KUBERNETES:
+        from ..mock_data import mock_kubernetes_namespaces
+        return [{
+            "name": ns["name"], "pods": ns["pods"], "running": ns["pods"],
+            "failed": 0, "pending": 0,
+            "cpu_millicores": float(ns["cpu_usage"].replace("m", "")),
+            "memory_mb": float(ns["ram_usage"].replace("Gi", "")) * 1024 if "Gi" in ns["ram_usage"] else float(ns["ram_usage"].replace("Mi", "")),
+            "restart_total": 0,
+        } for ns in mock_kubernetes_namespaces()]
+
     pods = _pods()
     result = []
     for namespace in sorted({p["namespace"] for p in pods}):

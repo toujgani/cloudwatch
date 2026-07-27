@@ -27,6 +27,7 @@ data:
   # Mock mode (true = fake data for demos)
   MOCK_OPENSTACK: "true"
   MOCK_OPENSHIFT: "false"
+  MOCK_KUBERNETES: "true"
 
   # Alert thresholds
   ALERT_CPU_WARNING: "70"
