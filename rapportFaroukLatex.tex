@@ -1,0 +1,2602 @@
+\documentclass[11pt,a4paper]{report}
+
+% ================== LANGUE & ENCODAGE ==================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+% ================== MISE EN PAGE ==================
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% ================== PACKAGES ==================
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{ragged2e}
+\usepackage{amsmath}
+
+\titlespacing*{\chapter}{0pt}{10pt}{10pt}
+
+% Justification propre + espacement de paragraphe homogène dans tout le rapport
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+\emergencystretch=2em
+\sloppy
+
+% ================== COULEUR EMSI / CIRES ==================
+\definecolor{EMSIGreen}{RGB}{56,87,35}
+\definecolor{CiresNavy}{RGB}{15,35,66}
+\definecolor{CiresOrange}{RGB}{230,126,34}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black
+}
+
+% ================== LISTINGS ==================
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!40!black},
+  stringstyle=\color{red!60!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  showstringspaces=false
+}
+
+% ================== COMMANDES ==================
+\newcommand{\Cpp}{C\textsuperscript{++}}
+
+% Emplacement d'image "à insérer" : cadre pointillé avec légende du fichier attendu
+\newcommand{\imgplaceholder}[2]{%
+  \fbox{\parbox[c][6cm][c]{0.92\textwidth}{\centering
+  \Large\bfseries [Emplacement image]\\[0.3cm]
+  \normalsize\normalfont Fichier attendu : \texttt{#1}\\[0.2cm]
+  \itshape #2}}%
+}
+
+% =====================================================
+%                    DOCUMENT
+% =====================================================
+\begin{document}
+
+% =====================================================
+%                PAGE DE GARDE EMSI (VERTE)
+% =====================================================
+\begin{titlepage}
+\thispagestyle{empty}
+
+\begin{tikzpicture}[remember picture,overlay]
+
+\fill[EMSIGreen]
+(current page.north west) rectangle
+([xshift=2cm]current page.south west);
+
+\fill[white]
+([xshift=0cm,yshift=1cm]current page.south west) rectangle
+([xshift=8cm,yshift=3cm]current page.south west);
+
+\fill[EMSIGreen]
+([xshift=0cm,yshift=2.3cm]current page.south west) rectangle
+([xshift=8.5cm,yshift=1.2cm]current page.south west);
+
+\fill[EMSIGreen]
+  (current page.south east) --
+  ([xshift=-5cm]current page.south east) --
+  ([yshift=5cm]current page.south east)
+  -- cycle;
+
+% Texte dans le triangle
+\node[
+    rotate=45,
+    text=white,
+    font=\bfseries\fontsize{22}{22}\selectfont
+] at ([xshift=-1.8cm,yshift=1.8cm]current page.south east)
+{3IIR};
+
+\node[anchor=west, text=white, font=\bfseries\small]
+at ([xshift=0.7cm,yshift=1.8cm]current page.south west)
+{5\textsuperscript{ème} Année Cycle d'Ingénieur};
+
+\end{tikzpicture}
+
+\centering
+\vspace*{0.3cm}
+
+% ---- Logos EMSI + CIRES Technologies côte à côte ----
+\begin{minipage}{0.42\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{EMSILOGO1.jpeg}\\[0.1cm]
+  
+\end{minipage}
+\hfill
+\begin{minipage}{0.42\textwidth}
+  \centering
+  \includegraphics[width=0.6\linewidth]{ cireslogo.png}\\[0.1cm]
+  
+\end{minipage}
+
+\vspace{1cm}
+
+\textbf{École Marocaine des Sciences de l'Ingénieur de Tanger}
+
+\vspace{1cm}
+
+{\Large\bfseries RAPPORT DE PROJET DE FIN D'ANNÉE}\\[0.4cm]
+
+{\large Filière}\\[0.1cm]
+{\bfseries Ingénierie Informatique et Réseaux}\\[0.7cm]
+
+{\large Intitulé du Projet}\\[0.3cm]
+
+\fbox{
+  \parbox{0.75\textwidth}{
+    \centering
+    \Large\bfseries
+    Cloud AI Monitor (CloudWatch)\\
+    \normalsize\normalfont Plateforme intelligente de supervision d'infrastructures Cloud (OpenStack \& OpenShift)
+  }
+}
+
+\vspace{0.9cm}
+
+\begin{center}
+{\large Réalisé par :}\\[0.3cm]
+
+\textbf{TOUJGANI Farouk}\\[0.15cm]
+\textbf{Meriche Redouane}\\[0.15cm]
+\end{center}
+
+\vspace{0.7cm}
+
+\begin{flushleft}
+\textbf{Organisme d'accueil}\\
+CIRES Technologies -- Groupe Tanger Med Special Agency (TMSA)
+
+\vspace{0.35cm}
+\textbf{Encadrant à CIRES Technologies}\\
+Mr Ibrahim El Hannaoui
+
+\vspace{0.35cm}
+\textbf{Encadrant pédagogique EMSI}\\
+{Mr EL HANJRI Adnane}
+\end{flushleft}
+
+\vspace{0.5cm}
+
+\begin{center}
+\textbf{Membres de jury}\\
+{[à compléter]}
+\end{center}
+
+\vfill
+\begin{center}
+{\large Année Universitaire 2025--2026}
+\end{center}
+
+\vfill
+\end{titlepage}
+
+
+% =========================================================
+% PAGES PRÉLIMINAIRES
+% =========================================================
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+% ------------------ Résumé ------------------
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+\normalsize
+\setlength{\parskip}{0.8em}
+
+Les infrastructures Cloud modernes combinent de plus en plus des environnements
+hybrides mêlant Cloud privé (OpenStack) et plateformes de conteneurisation
+(OpenShift / Kubernetes). Cette hétérogénéité rend la supervision manuelle des
+ressources de plus en plus difficile pour les équipes d'exploitation, qui
+doivent suivre en parallèle l'état des machines virtuelles, des pods et des
+services, tout en anticipant les incidents avant qu'ils n'affectent la
+production.
+
+C'est dans ce contexte que s'inscrit le projet defin d'année réalisé au sein
+de \textbf{CIRES Technologies}, filiale technologique du Groupe Tanger Med : la
+conception et le développement de \textbf{Cloud AI Monitor (CloudWatch)}, une
+plateforme de supervision Cloud unifiée intégrant des capacités
+d'intelligence artificielle pour la détection d'anomalies et l'aide à la
+décision.
+
+La solution proposée s'appuie sur un backend FastAPI (Python 3.11) connecté
+aux API OpenStack et OpenShift, une base de données PostgreSQL pilotée par
+SQLAlchemy, un ordonnanceur de tâches APScheduler pour la collecte périodique
+des métriques, un moteur d'alertes, un agent IA de décision, un agent AIOps
+de remédiation contrôlée, un module de rapports et une intégration Grafana
+pour l'observabilité. Le frontend React/TypeScript/Vite propose plusieurs
+vues opérationnelles : tableau de bord, VMs, pods, alertes, Kubernetes, logs,
+visualisations et rapports, tout en reprenant l'identité visuelle de CIRES
+Technologies.
+
+Ce rapport présente l'organisme d'accueil, le contexte et la problématique du
+projet, l'état de l'art des solutions de supervision Cloud, la planification
+du projet, la conception détaillée de l'architecture retenue, ainsi que le
+développement, les interfaces utilisateur, les tests et les résultats obtenus
+au cours du stage.
+
+\medskip
+\textbf{Mots-clés :} Cloud Computing, OpenStack, OpenShift, Kubernetes,
+supervision, intelligence artificielle, FastAPI, React.
+
+% ------------------ Dédicace ------------------
+\chapter*{Dédicace}
+\addcontentsline{toc}{chapter}{Dédicace}
+
+\normalsize
+\setlength{\parskip}{0.8em}
+
+Je dédie ce travail à mes parents, pour leur amour, leur soutien indéfectible,
+leurs sacrifices et leurs encouragements constants tout au long de mon
+parcours. Leur confiance a été une source permanente de motivation et m'a
+permis d'avancer avec détermination vers la réalisation de mes objectifs. Je
+le dédie également à mes frères, sœurs et à tous mes proches, pour leur
+présence et leur soutien dans les moments les plus importants. Que ce travail
+soit le témoignage de ma profonde reconnaissance envers tous ceux qui ont
+contribué, de près ou de loin, à ma réussite.
+
+% ------------------ Remerciements ------------------
+\newpage
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+\vspace{-1em}
+
+\normalsize
+\setlength{\parskip}{0.8em}
+
+Je tiens à exprimer ma profonde gratitude envers toutes les personnes qui ont
+contribué, de près ou de loin, à la réalisation de ce projet defin d'année.
+
+Mes remerciements les plus sincères vont à \textbf{M. Ibrahim El Hannaoui},
+mon encadrant au sein de CIRES Technologies, pour sa disponibilité, sa rigueur
+technique et la qualité de son accompagnement tout au long de ce stage. Ses
+conseils avisés et sa confiance m'ont permis de mener ce projet dans les
+meilleures conditions.
+
+Je remercie également l'ensemble des équipes de CIRES Technologies et de
+l'Agence Spéciale Tanger Med (TMSA) pour leur accueil chaleureux et leur
+disponibilité, ainsi que pour l'environnement technique riche qui m'a été
+offert durant cette période.
+
+Mes remerciements s'adressent aussi à mon encadrant pédagogique à l'EMSI,
+{ EL HANJRI Adnane}, ainsi qu'à l'ensemble du corps enseignant et administratif de
+l'École Marocaine des Sciences de l'Ingénieur pour la qualité de la formation
+reçue tout au long de mon cursus.
+
+Enfin, j'exprime ma profonde reconnaissance à ma famille et à mes proches pour
+leur soutien indéfectible, leur patience et leurs encouragements tout au long
+de mon parcours académique.
+
+\vfill
+
+% ------------------ Liste des abréviations ------------------
+\chapter*{Liste des abréviations}
+\addcontentsline{toc}{chapter}{Liste des abréviations}
+
+\normalsize
+\setlength{\parskip}{0.8em}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{3cm} p{11cm}}
+\textbf{TMSA} & Tanger Med Special Agency \\
+\textbf{IA} & Intelligence Artificielle \\
+\textbf{AI} & Artificial Intelligence \\
+\textbf{VM} & Virtual Machine (Machine Virtuelle) \\
+\textbf{IaaS} & Infrastructure as a Service \\
+\textbf{PaaS} & Platform as a Service \\
+\textbf{API} & Application Programming Interface \\
+\textbf{REST} & Representational State Transfer \\
+\textbf{JWT} & JSON Web Token \\
+\textbf{ORM} & Object Relational Mapping \\
+\textbf{SQL} & Structured Query Language \\
+\textbf{WS} & WebSocket \\
+\textbf{K8s} & Kubernetes \\
+\textbf{OCP} & OpenShift Container Platform \\
+\textbf{RBAC} & Role-Based Access Control \\
+\textbf{NAT} & Network Address Translation \\
+\textbf{CPU} & Central Processing Unit \\
+\textbf{RAM} & Random Access Memory \\
+\textbf{ML} & Machine Learning \\
+\textbf{CI/CD} & Continuous Integration / Continuous Deployment \\
+\textbf{SLA} & Service Level Agreement \\
+\textbf{TTL} & Time To Live \\
+\textbf{ASGI} & Asynchronous Server Gateway Interface \\
+\textbf{SOC} & Security Operation Center \\
+\textbf{NOC} & Network Operation Center \\
+\textbf{IDE} & Integrated Development Environment \\
+\textbf{UML} & Unified Modeling Language \\
+\textbf{HTTPS} & HyperText Transfer Protocol Secure \\
+\textbf{AIOps} & Artificial Intelligence for IT Operations \\
+\textbf{SMTP} & Simple Mail Transfer Protocol \\
+\textbf{TLS} & Transport Layer Security \\
+\textbf{ROI} & Return On Investment (Retour sur Investissement) \\
+\textbf{PVC} & Persistent Volume Claim \\
+\textbf{GHCR} & GitHub Container Registry \\
+\textbf{SPA} & Single Page Application \\
+\textbf{SSH} & Secure Shell \\
+\end{tabular}
+\end{center}
+
+\newpage
+% ------------------ Table des matières + Listes ------------------
+\tableofcontents
+\listoffigures
+\listoftables
+
+% =========================================================
+% CORPS DU RAPPORT : numérotation normale
+% =========================================================
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% =========================================================
+% CHAPITRE 1 : ORGANISME D'ACCUEIL
+% =========================================================
+\chapter{Présentation de l'organisme d'accueil}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Ce chapitre présente le cadre institutionnel dans lequel s'est déroulé le
+stage defin d'année : le Groupe Tanger Med, à travers l'Agence Spéciale
+Tanger Méditerranée (TMSA), et sa filiale technologique CIRES Technologies,
+structure d'accueil directe du projet Cloud AI Monitor. Il précise également
+le positionnement du stagiaire au sein des équipes techniques et le cadre
+organisationnel du projet.
+
+\section{Le Groupe Tanger Med et l'Agence Spéciale Tanger Med (TMSA)}
+
+L'Agence Spéciale Tanger Méditerranée (TMSA) est un établissement public
+stratégique, doté de la personnalité morale et de l'autonomie financière,
+créé pour assurer, au nom et pour le compte de l'État marocain, le
+développement de la zone spéciale de Tanger Med. Elle dispose de
+prérogatives de puissance publique sur le complexe portuaire et les zones
+franches qui lui sont rattachées.
+
+Autour de cette agence s'est structuré le Groupe Tanger Med, un ensemble de
+filiales spécialisées couvrant l'aménagement du territoire, la gestion
+portuaire, les zones franches industrielles et logistiques, ainsi que des
+métiers de support tels que l'ingénierie (Tanger Med Engineering), la
+distribution d'eau et d'électricité (Tanger Med Utilities) et les
+technologies de l'information (CIRES Technologies). En un peu plus de vingt
+ans, Tanger Med est devenu le premier port à conteneurs d'Afrique et l'un des
+principaux hubs logistiques et industriels du continent, générant des
+dizaines de milliers d'emplois dans la région Nord du Maroc.
+
+Cette dynamique de croissance s'accompagne d'une complexité opérationnelle
+croissante : chaque filiale et chaque zone d'activité s'appuie sur des
+systèmes d'information et des infrastructures numériques qui doivent
+garantir un niveau de disponibilité et de sécurité élevé, compte tenu du
+caractère stratégique des activités portuaires et logistiques concernées.
+
+\section{CIRES Technologies}
+
+\textbf{CIRES Technologies} est la filiale technologique du Groupe Tanger
+Med. Elle est spécialisée dans le développement de solutions de sûreté, de
+cybersécurité et de systèmes d'information destinées à des sites complexes et
+stratégiques tels que les infrastructures portuaires, aéroportuaires,
+industrielles et logistiques.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\textwidth]{cireslogo.png}
+\caption{Logo de CIRES Technologies, filiale technologique du Groupe Tanger Med}
+\label{fig:logo-cires}
+\end{figure}
+
+L'entreprise couvre un large périmètre de compétences technologiques :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.3em, parsep=0em, topsep=0.3em]
+    \item \textbf{Sécurité électronique} : vidéosurveillance urbaine et
+    portuaire, contrôle d'accès, détection d'intrusion, centres de contrôle et
+    salles de supervision ;
+    \item \textbf{Connectivité et réseaux} : conception et gestion de réseaux
+    filaires et sans fil dédiés aux sites industriels et logistiques ;
+    \item \textbf{Cloud et data centers} : hébergement, services Cloud et
+    infrastructures de données pour les entités du Groupe et ses partenaires ;
+    \item \textbf{Cybersécurité} : exploitation d'un centre opérationnel de
+    sécurité (SOC) et d'un centre d'exploitation réseau (NOC) ;
+    \item \textbf{Digital Factory} : conception, intégration et mise en
+    production de solutions logicielles sur mesure, à l'image des plateformes
+    de reconnaissance de plaques d'immatriculation ou de gestion des rondes de
+    sécurité développées en interne.
+\end{itemize}
+
+CIRES Technologies met en avant l'indépendance technologique de ses clients et
+partenaires ainsi que la valorisation du savoir-faire de ses équipes
+d'ingénieurs, en s'appuyant sur des partenariats avec des acteurs
+technologiques internationaux. Cette double exigence de souveraineté
+technologique et d'excellence opérationnelle constitue le fil conducteur des
+projets internes de l'entreprise, dont fait partie Cloud AI Monitor.
+
+\subsection{Contexte de la transformation digitale}
+
+Au-delà de ses activités historiques de sûreté et de sécurité électronique,
+CIRES Technologies accompagne activement la transformation digitale du Groupe
+Tanger Med. Cette transformation se traduit notamment par la multiplication
+des environnements Cloud internes, utilisés aussi bien pour héberger des
+applications métier que pour expérimenter de nouvelles solutions
+technologiques via des environnements de conteneurisation. Cette diversité
+d'environnements constitue précisément le terrain sur lequel s'est construit
+le besoin ayant motivé le projet Cloud AI Monitor.
+
+\section{Cadre du stage}
+
+Le stage defin d'année s'est déroulé au sein des équipes techniques de
+CIRES Technologies, dans le cadre d'un projet interne visant à renforcer les
+capacités de supervision de l'infrastructure Cloud du Groupe. C'est dans cet
+environnement, mêlant exigences de sûreté, de performance et de continuité de
+service propres à un opérateur d'infrastructures critiques, que le projet
+\textbf{Cloud AI Monitor (CloudWatch)} a été confié à l'auteur de ce rapport,
+sous l'encadrement de M. Ibrahim El Hannaoui.
+
+Le stagiaire a occupé, tout au long du projet, un rôle de développeur
+full-stack et d'intégrateur Cloud, en charge à la fois de la conception de
+l'architecture logicielle, du développement du backend et du frontend, et de
+la mise en place de l'infrastructure de test OpenStack/OpenShift nécessaire à
+la validation de la plateforme.
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a permis de situer le projet dans son contexte institutionnel :
+celui d'une filiale technologique d'un groupe public stratégique, confrontée
+aux enjeux de supervision d'une infrastructure Cloud hétérogène. Le chapitre
+suivant détaille le contexte technique et la problématique à l'origine du
+projet Cloud AI Monitor.
+
+% =========================================================
+% CHAPITRE 2 : CONTEXTE ET PROBLÉMATIQUE
+% =========================================================
+\newpage
+\chapter{Contexte et problématique}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Dans ce chapitre, nous présentons le contexte technique du projet Cloud AI
+Monitor ainsi que les problématiques liées à la supervision d'infrastructures
+Cloud hybrides. Nous exposons également les objectifs fonctionnels et
+techniques du système, ainsi que son architecture globale.
+
+\section{Contexte du projet}
+
+Les infrastructures informatiques modernes s'appuient de plus en plus sur des
+environnements Cloud hybrides, combinant Cloud privé de type IaaS
+(OpenStack) pour l'hébergement de machines virtuelles, et plateformes de
+conteneurisation de type PaaS (OpenShift / Kubernetes) pour le déploiement
+d'applications sous forme de pods. Cette coexistence de paradigmes différents
+complique fortement la supervision globale du système d'information : les
+outils de monitoring traditionnels sont souvent spécialisés sur un seul type
+de ressource et ne permettent pas d'obtenir une vision unifiée de l'état de
+l'infrastructure.
+
+Au sein de CIRES Technologies, cette problématique se pose avec une acuité
+particulière : les équipes d'exploitation doivent surveiller à la fois des
+machines virtuelles OpenStack hébergeant des services critiques et des
+charges de travail conteneurisées sur OpenShift, tout en anticipant les
+incidents avant qu'ils n'affectent la disponibilité des services. C'est dans
+cette dynamique qu'a été initié le projet \textbf{Cloud AI Monitor
+(CloudWatch)}, une plateforme de supervision Cloud unifiée, enrichie par des
+capacités d'intelligence artificielle, destinée à faciliter la détection
+d'anomalies et la prise de décision des équipes techniques.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{infrastructure.png}
+\caption{Vue d'ensemble de l'infrastructure Cloud hybride ciblée par Cloud AI Monitor}
+\label{fig:infra-hybride}
+\end{figure}
+
+\small
+\textit{Cette interface représente la page d'accueil de Cloud AI Monitor. Elle offre un accès centralisé aux différentes fonctionnalités de supervision et permet une navigation adaptée aux différents profils d'utilisateurs.}
+\normalsize
+
+\newpage
+\section{Problématique du projet}
+
+L'analyse du besoin a permis d'identifier plusieurs limitations dans les
+pratiques de supervision existantes :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item L'absence d'une vue consolidée regroupant à la fois les ressources
+    OpenStack (VMs) et les ressources OpenShift (pods, namespaces) ;
+    \item La détection tardive des anomalies, souvent constatée après impact
+    sur les utilisateurs plutôt qu'en amont ;
+    \item Le manque d'historisation exploitable des métriques pour analyser
+    les tendances et anticiper la saturation des ressources ;
+    \item L'absence de mécanismes d'alerte intelligents capables de
+    distinguer un comportement normal d'une dérive anormale ;
+    \item La dépendance à des outils propriétaires coûteux et peu adaptés à un
+    environnement hybride spécifique ;
+    \item La difficulté, pour un même incident, de croiser rapidement l'état
+    d'une machine virtuelle et celui des services conteneurisés qui en
+    dépendent.
+\end{itemize}
+
+Face à ces constats, la problématique centrale du projet peut être formulée
+ainsi :
+
+\begin{quote}
+\itshape
+Comment concevoir une plateforme de supervision unifiée capable de collecter,
+centraliser et analyser en temps réel les métriques d'une infrastructure
+Cloud hybride OpenStack/OpenShift, tout en exploitant l'intelligence
+artificielle pour détecter automatiquement les anomalies et assister les
+équipes d'exploitation dans leur prise de décision ?
+\end{quote}
+
+\section{Objectifs du projet}
+
+\subsection{Objectif général}
+
+Concevoir et développer une plateforme de supervision Cloud intelligente,
+capable de collecter en temps réel les métriques des machines virtuelles
+OpenStack et des pods OpenShift/Kubernetes, de les centraliser dans un modèle
+de données unifié, et d'exploiter des mécanismes d'intelligence artificielle
+pour la détection d'anomalies et l'aide à la décision.
+
+\subsection{Objectifs spécifiques}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item Mettre en place une collecte automatisée et périodique des
+    métriques OpenStack (état des VMs, CPU, mémoire, stockage) via
+    APScheduler ;
+    \item Intégrer la supervision des ressources OpenShift/Kubernetes (pods,
+    namespaces, quotas) via l'API Kubernetes ;
+    \item Centraliser les métriques collectées dans une base de données
+    PostgreSQL modélisée avec SQLAlchemy ;
+    \item Développer une API REST FastAPI exposant les données de supervision
+    et les actions opérationnelles ;
+    \item Concevoir un moteur d'alertes capable de détecter les saturations,
+    états anormaux et redémarrages répétés ;
+    \item Concevoir un agent IA capable de prioriser les alertes, produire une
+    recommandation et aider l'opérateur dans la décision ;
+    \item Ajouter un agent AIOps capable de préparer ou simuler une action de
+    remédiation sous garde-fous ;
+    \item Prévoir l'évolution vers une authentification JWT backend et un RBAC
+    serveur complet ;
+    \item Développer trois espaces de travail dédiés (administrateur,
+    opérateur, observateur) dans un tableau de bord React/TypeScript reprenant
+    l'identité visuelle de CIRES Technologies.
+\end{itemize}
+
+\section{Parties prenantes du projet}
+
+Le projet implique plusieurs catégories de parties prenantes, dont les
+attentes ont guidé les choix de conception :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item \textbf{L'équipe d'exploitation Cloud de CIRES Technologies},
+    utilisatrice finale principale, en attente d'une vue consolidée et
+    d'alertes fiables ;
+    \item \textbf{L'encadrement technique}, représenté par M. Ibrahim El
+    Hannaoui, garant de la cohérence du projet avec les standards internes de
+    l'entreprise ;
+    \item \textbf{Les administrateurs systèmes}, responsables de la
+    configuration des accès aux environnements OpenStack et OpenShift ;
+    \item \textbf{Le stagiaire}, en charge de la conception et du
+    développement de la plateforme.
+\end{itemize}
+
+\section{Architecture générale du système}
+
+L'architecture de Cloud AI Monitor repose sur une approche modulaire séparant
+clairement la collecte, le traitement et la restitution de l'information :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item Un \textbf{module de collecte OpenStack} interrogeant les API Nova,
+    Cinder et Neutron pour récupérer l'état des machines virtuelles et des
+    ressources réseau/stockage associées ;
+    \item Un \textbf{module de collecte OpenShift/Kubernetes} interrogeant
+    l'API Kubernetes pour récupérer l'état des pods, des namespaces et des
+    quotas de ressources ;
+    \item Un \textbf{ordonnanceur APScheduler} déclenchant la collecte des
+    métriques à intervalles réguliers ;
+    \item Une \textbf{base de données PostgreSQL} pilotée par SQLAlchemy,
+    stockant l'historique des métriques et des événements ;
+    \item Un \textbf{moteur d'alertes} chargé d'appliquer les règles de
+    seuils et de cycle de vie des incidents ;
+    \item Un \textbf{agent IA de décision NOC} chargé de scorer les alertes,
+    les catégoriser et générer des recommandations ;
+    \item Un \textbf{agent AIOps} chargé de préparer ou exécuter des actions
+    de remédiation contrôlées ;
+    \item Une \textbf{API REST FastAPI} exposant l'ensemble des
+    fonctionnalités aux vues frontend ;
+    \item Un \textbf{module d'observabilité} connecté à Grafana pour les
+    métriques, logs et traces lorsque les datasources sont disponibles ;
+    \item Un \textbf{frontend React / TypeScript / Vite} restituant les
+    métriques sous forme de tableaux de bord interactifs, adaptés au rôle de
+    chaque utilisateur.
+\end{itemize}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a présenté le contexte technique du projet Cloud AI Monitor ainsi
+que les limites des pratiques de supervision existantes au sein de
+l'infrastructure hybride de CIRES Technologies. Le chapitre suivant est
+consacré à l'état de l'art des solutions de supervision Cloud et à leur
+positionnement par rapport à la solution proposée.
+
+% =========================================================
+% CHAPITRE 3 : ÉTAT DE L'ART
+% =========================================================
+\newpage
+\chapter{État de l'art}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Ce chapitre étudie les concepts fondamentaux du Cloud Computing et de la
+supervision d'infrastructures, analyse les principales technologies et
+solutions existantes, puis positionne Cloud AI Monitor par rapport à ces
+solutions.
+
+\section{Concepts fondamentaux}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.25em, parsep=0em, topsep=0.2em]
+    \item \textbf{Le Cloud Computing IaaS} désigne la mise à disposition de
+    ressources d'infrastructure (calcul, stockage, réseau) virtualisées à la
+    demande. \textbf{OpenStack} est une plateforme Cloud open source
+    implémentant ce modèle, structurée en services indépendants (Nova pour le
+    calcul, Neutron pour le réseau, Cinder pour le stockage bloc, Keystone
+    pour l'identité).
+    \item \textbf{La conteneurisation} consiste à empaqueter une application
+    et ses dépendances dans une unité isolée et portable, le conteneur.
+    \textbf{Kubernetes} est le standard d'orchestration de conteneurs, et
+    \textbf{OpenShift} est une distribution Kubernetes d'entreprise qui y
+    ajoute des couches de sécurité, de gestion des identités et d'outillage
+    développeur.
+    \item \textbf{La supervision (monitoring)} regroupe l'ensemble des
+    techniques permettant de collecter, stocker et analyser des métriques
+    système afin de garantir la disponibilité et la performance d'une
+    infrastructure.
+    \item \textbf{La détection d'anomalies} vise à identifier automatiquement
+    des comportements s'écartant significativement d'un profil normal, en
+    s'appuyant sur des méthodes statistiques ou d'apprentissage automatique.
+    \item \textbf{Le RBAC (Role-Based Access Control)} est un modèle de
+    contrôle d'accès associant des permissions à des rôles plutôt qu'à des
+    utilisateurs individuels, largement utilisé dans OpenShift et dans les
+    API sécurisées.
+\end{itemize}
+
+\subsection{Approches de détection d'anomalies applicables à la supervision}
+
+Plusieurs familles de méthodes permettent de détecter des anomalies dans des
+séries temporelles de métriques d'infrastructure. Les approches à seuils
+statiques, simples à mettre en œuvre, déclenchent une alerte lorsqu'une
+métrique dépasse une valeur fixe ; elles restent cependant peu adaptées à des
+charges de travail variables dans le temps. Les approches statistiques,
+fondées par exemple sur la moyenne mobile et l'écart-type glissant,
+permettent de détecter des écarts par rapport à un comportement récent sans
+nécessiter de phase d'apprentissage préalable. Les approches par apprentissage
+automatique, enfin, permettent de modéliser des comportements plus complexes
+à partir d'un historique de métriques, au prix d'une complexité de mise en
+œuvre plus importante. Le moteur d'intelligence artificielle de Cloud AI
+Monitor s'inscrit dans cette dernière logique, avec une première étape fondée
+sur des indicateurs statistiques, extensible vers des modèles plus avancés.
+
+
+\section{Technologies et outils étudiés}
+
+Plusieurs technologies ont été étudiées et comparées avant la définition de
+la pile technique finale de Cloud AI Monitor.
+
+\subsection{Technologies Backend}
+
+Après analyse des besoins en matière de performance, de gestion asynchrone
+des requêtes et de documentation automatique d'API, FastAPI a été retenu
+comme framework principal du backend, face à des alternatives telles que
+Django ou Flask.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3cm}|p{3.8cm}|p{3.2cm}|p{4cm}|}
+\hline
+\textbf{Besoin} & \textbf{Solutions existantes} & \textbf{Solution retenue} & \textbf{Avantage principal} \\
+\hline
+Développement des APIs REST & Django, Flask & FastAPI & Haute performance et gestion asynchrone \\
+\hline
+\end{tabular}
+\caption{Technologies Backend}
+\end{table}
+
+\subsection{Technologies de gestion des données}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3cm}|p{3.8cm}|p{3.2cm}|p{4cm}|}
+\hline
+\textbf{Besoin} & \textbf{Solutions existantes} & \textbf{Solution retenue} & \textbf{Avantage principal} \\
+\hline
+Base de données relationnelle & MySQL, SQLite & PostgreSQL & Robustesse et richesse des types de données \\
+\hline
+ORM Python & Django ORM, Peewee & SQLAlchemy & Flexibilité et intégration asynchrone \\
+\hline
+\end{tabular}
+\caption{Technologies de gestion des données}
+\end{table}
+
+\subsection{Technologies de planification et de temps réel}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3cm}|p{3.8cm}|p{3.2cm}|p{4cm}|}
+\hline
+\textbf{Besoin} & \textbf{Solutions existantes} & \textbf{Solution retenue} & \textbf{Avantage principal} \\
+\hline
+Tâches planifiées & Celery Beat, Cron & APScheduler & Intégration légère au processus FastAPI \\
+\hline
+Communication temps réel & Polling HTTP, SSE & WebSocket & Diffusion bidirectionnelle instantanée \\
+\hline
+\end{tabular}
+\caption{Technologies de planification et temps réel}
+\end{table}
+
+\subsection{Technologies Frontend}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3cm}|p{3.8cm}|p{3.2cm}|p{4cm}|}
+\hline
+\textbf{Besoin} & \textbf{Solutions existantes} & \textbf{Solution retenue} & \textbf{Avantage principal} \\
+\hline
+Interface utilisateur & Angular, Vue.js & React + TypeScript & Écosystème riche, typage statique \\
+\hline
+Outil de build & Webpack, CRA & Vite & Démarrage et rechargement à chaud rapides \\
+\hline
+\end{tabular}
+\caption{Technologies Frontend}
+\end{table}
+
+\section{Solutions de supervision existantes}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.4em, parsep=0em, topsep=0.4em]
+
+    \item \textbf{Prometheus + Grafana} constitue la combinaison la plus
+    répandue pour la supervision d'infrastructures Cloud-natives. Elle offre
+    une collecte de métriques performante et des tableaux de bord
+    personnalisables, mais nécessite un travail d'intégration important pour
+    couvrir simultanément OpenStack et OpenShift, et n'intègre pas nativement
+    de couche d'intelligence artificielle.
+
+    \item \textbf{Zabbix} est une solution de supervision générique, mature
+    et largement déployée, mais dont l'architecture agent-centrée est peu
+    adaptée à la supervision fine des ressources Kubernetes/OpenShift.
+
+    \item \textbf{OpenStack Telemetry (Ceilometer/Gnocchi)} propose une
+    collecte de métriques native à OpenStack, mais reste cantonnée au
+    périmètre OpenStack et ne couvre pas les environnements de
+    conteneurisation.
+
+    \item \textbf{Le tableau de bord natif d'OpenShift} fournit une vue
+    détaillée des ressources Kubernetes, mais aucune vision consolidée avec
+    les ressources OpenStack.
+
+    \item \textbf{Datadog et autres solutions SaaS propriétaires} proposent
+    une couverture large et des fonctionnalités d'IA avancées, mais
+    impliquent l'envoi des données d'infrastructure vers un service tiers
+    externe, ce qui pose des enjeux de souveraineté des données peu
+    compatibles avec le contexte d'un opérateur d'infrastructures critiques.
+
+\end{itemize}
+
+\section{Analyse critique}
+
+Le tableau suivant synthétise la comparaison entre les solutions étudiées et
+Cloud AI Monitor.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|p{3.3cm}|p{2.3cm}|p{2cm}|p{2.2cm}|p{2cm}|p{2.6cm}|}
+\hline
+\textbf{Critère} & \textbf{Prometheus/Grafana zabix} & \textbf{} & \textbf{Ceilometer} & \textbf{SaaS propriétaire} & \textbf{Cloud AI Monitor} \\
+\hline
+Vue unifiée OpenStack + OpenShift & Partielle & Non & Non & Oui & Oui \\
+\hline
+Détection IA des anomalies & Non native & Non & Non & Oui & Oui \\
+\hline
+Diffusion temps réel & Oui & Limitée & Non & Oui & Prévue en évolution \\
+\hline
+Personnalisation & Élevée & Moyenne & Faible & Faible & Totale \\
+\hline
+Souveraineté des données & Oui & Oui & Oui & Non & Oui \\
+\hline
+Intégration rôle métier CIRES & Non & Non & Non & Non & Oui \\
+\hline
+\end{tabular}
+\caption{Comparaison des solutions de supervision}
+\end{table}
+
+Cette analyse confirme l'intérêt d'une plateforme sur mesure : Cloud AI
+Monitor se distingue par sa capacité à unifier deux paradigmes
+d'infrastructure distincts au sein d'un même modèle de données, tout en
+intégrant une couche d'intelligence artificielle dédiée à la détection
+d'anomalies et en garantissant que les données d'infrastructure restent
+hébergées au sein de CIRES Technologies, adaptée aux besoins spécifiques et
+aux exigences de souveraineté de l'entreprise.
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a permis d'étudier les concepts fondamentaux du Cloud Computing et
+de la supervision, ainsi que les principales solutions existantes. Cette
+étude comparative justifie les choix technologiques retenus pour Cloud AI
+Monitor, détaillés dans les chapitres suivants consacrés à la planification
+et à la conception du système.
+
+% =========================================================
+% CHAPITRE 4 : PLANIFICATION DU PROJET
+% =========================================================
+\newpage
+\chapter{Planification du projet}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Ce chapitre présente la démarche méthodologique retenue pour la conduite du
+projet ainsi que la planification prévisionnelle des différentes phases de
+réalisation de Cloud AI Monitor.
+
+\section{Démarche méthodologique}
+
+Le projet a été mené selon une démarche incrémentale, inspirée des principes
+agiles, organisée en phases successives testées et validées avant de passer à
+la suivante : cadrage du besoin et analyse de l'existant, conception de
+l'architecture, mise en place de l'infrastructure de test, développement du
+backend et du frontend, puis intégration et validation. Cette approche a
+permis de sécuriser l'avancement du projet en s'appuyant, dès les premières
+semaines, sur des jeux de données simulées intégrés au projet
+garantissant que le développement du frontend et de l'API ne dépende pas de
+la disponibilité immédiate des environnements Cloud réels.
+
+\section{Planification prévisionnelle}
+
+Le tableau~\ref{tab:planning} présente la planification prévisionnelle du
+projet, structurée en phases de travail.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|p{1.6cm}|p{4.2cm}|p{7.5cm}|}
+\hline
+\textbf{Phase} & \textbf{Objectif} & \textbf{Activités principales} \\
+\hline
+1 & Cadrage et analyse du besoin & Étude de l'existant, entretiens avec les
+équipes d'exploitation, définition des besoins fonctionnels et non
+fonctionnels \\
+\hline
+2 & Conception de l'architecture & Modélisation des acteurs et cas
+d'utilisation, choix technologiques, modèle de données, schéma d'architecture \\
+\hline
+3 & Fondations applicatives & Mise en place du backend FastAPI, du modèle
+SQLAlchemy, des routes REST et des données de démonstration \\
+\hline
+4 & Alerting et intelligence & Mise en place du moteur d'alertes, de l'agent
+IA de décision NOC et de l'agent AIOps de remédiation contrôlée \\
+\hline
+5 & Frontend & Développement des interfaces React/TypeScript pour les trois
+rôles (administrateur, opérateur, observateur) \\
+\hline
+6 & Infrastructure de test & Déploiement d'OpenStack via Packstack sur Rocky
+Linux, configuration de l'accès à l'OpenShift Developer Sandbox \\
+\hline
+7 & Intégration Cloud réelle & Connexion des collecteurs aux API OpenStack et
+OpenShift réelles, remplacement progressif des données simulées \\
+\hline
+8 & Tests et validation & Tests fonctionnels, tests de charge, validation du
+moteur de détection d'anomalies \\
+\hline
+9 & Rédaction et soutenance & Finalisation de la documentation et préparation
+de la soutenance \\
+\hline
+\end{tabular}
+\caption{Planification prévisionnelle du projet Cloud AI Monitor}
+\label{tab:planning}
+\end{table}
+
+\section{Gestion des risques}
+
+Plusieurs risques ont été identifiés en amont du projet, avec des mesures
+d'atténuation associées, résumés dans le tableau~\ref{tab:risques}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|p{4.5cm}|p{4.5cm}|p{4.3cm}|}
+\hline
+\textbf{Risque} & \textbf{Impact} & \textbf{Mesure d'atténuation} \\
+\hline
+Indisponibilité temporaire des environnements Cloud réels & Retard du
+développement backend & Utilisation de données de démonstration découplant
+le développement de la disponibilité des environnements \\
+\hline
+Complexité de configuration réseau (NAT VirtualBox) & Retard de la phase
+d'intégration & Documentation systématique des configurations testées,
+recherche de solutions alternatives (bridge, host-only) \\
+\hline
+Restrictions de permissions sur le Developer Sandbox OpenShift & Couverture
+partielle des ressources supervisées & Adaptation du collecteur pour cibler
+les namespaces autorisés \\
+\hline
+Délai de stage limité & Fonctionnalités non finalisées & Priorisation des
+fonctionnalités cœur (collecte, API, tableau de bord) sur les fonctionnalités
+secondaires \\
+\hline
+\end{tabular}
+\caption{Analyse des risques du projet}
+\label{tab:risques}
+\end{table}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a présenté la démarche méthodologique et la planification
+prévisionnelle retenues pour la conduite du projet. Le chapitre suivant est
+consacré à la conception détaillée de l'architecture de Cloud AI Monitor.
+
+% =========================================================
+% CHAPITRE 5 : CONCEPTION ET ARCHITECTURE DU SYSTÈME
+% =========================================================
+\newpage
+\chapter{Conception et architecture du système}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Ce chapitre présente la conception détaillée de Cloud AI Monitor : l'analyse
+des besoins, les acteurs et cas d'utilisation, l'organisation du projet,
+l'architecture retenue, le modèle de données, les flux de traitement et les
+mesures de sécurité mises en place.
+
+\section{Analyse des besoins}
+
+\subsection{Besoins fonctionnels}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item Gestion de trois profils d'interface (administrateur, opérateur,
+    observateur), avec évolution prévue vers une authentification backend
+    sécurisée ;
+    \item Consultation de l'état des machines virtuelles OpenStack (statut,
+    CPU, mémoire, disque) ;
+    \item Consultation de l'état des pods et namespaces OpenShift ;
+    \item Historisation des métriques collectées ;
+    \item Détection d'anomalies par règles et priorisation assistée par
+    intelligence artificielle ;
+    \item Remédiation contrôlée par agent AIOps ;
+    \item Rapports opérationnels et exports CSV ;
+    \item Observabilité via Grafana lorsque les datasources sont configurées ;
+    \item Tableau de bord de synthèse avec indicateurs clés et alertes ;
+    \item Administration des comptes utilisateurs et des connexions Cloud
+    prévue comme perspective.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{interface.png}
+\caption{Interface du système Cloud AI Monitor}
+\label{fig:interface}
+\end{figure}
+
+\small
+\textbf{Interprétation :}
+Cette interface constitue le point d'entrée principal de la plateforme Cloud AI Monitor. Elle regroupe les informations essentielles sur l'état de l'infrastructure, notamment les indicateurs de performance, les graphiques d'utilisation des ressources et les statistiques globales, permettant aux utilisateurs d'avoir une vision rapide et centralisée du système.
+\normalsize
+\subsection{Besoins non fonctionnels}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item \textbf{Performance :} temps de réponse API inférieur à 200 ms pour
+    les endpoints de consultation ;
+    \item \textbf{Sécurité :} séparation des rôles côté interface, secrets
+    isolés dans la configuration backend, garde-fous AIOps, avec objectif
+    d'ajouter JWT backend, RBAC serveur et chiffrement renforcé ;
+    \item \textbf{Fiabilité :} continuité de la collecte de métriques même en
+    cas d'indisponibilité temporaire d'une source ;
+    \item \textbf{Évolutivité :} architecture modulaire permettant l'ajout de
+    nouvelles sources de données (autres Clouds, autres métriques) ;
+    \item \textbf{Ergonomie :} interface claire, cohérente avec l'identité
+    visuelle de CIRES Technologies (bleu marine et orange), adaptée à chaque
+    rôle utilisateur.
+\end{itemize}
+
+\section{Identification des acteurs}
+
+Trois profils d'utilisateurs interagissent avec Cloud AI Monitor, chacun
+disposant d'un espace de travail et de permissions dédiés :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.3em, parsep=0em, topsep=0.3em]
+    \item \textbf{Administrateur :} gère les comptes utilisateurs, configure
+    les connexions aux environnements OpenStack et OpenShift, accède à
+    l'ensemble des fonctionnalités et aux journaux du système ;
+    \item \textbf{Opérateur :} consulte les tableaux de bord, reçoit les
+    alertes, acquitte les anomalies détectées et effectue les actions
+    correctives de premier niveau ;
+    \item \textbf{Observateur :} consulte les métriques et tableaux de bord
+    en lecture seule, sans possibilité d'action sur le système.
+\end{itemize}
+
+\newpage
+\section{Cas d'utilisation}
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.4em, parsep=0em, topsep=0.4em]
+
+    \item \textbf{Consulter le tableau de bord :}
+    L'utilisateur authentifié accède à la vue de synthèse regroupant l'état
+    global des VMs OpenStack et des pods OpenShift, ainsi que les indicateurs
+    de santé de l'infrastructure via \texttt{GET /api/dashboard/stats}.
+
+    \item \textbf{Consulter les ressources OpenStack :}
+    L'utilisateur consulte la liste des machines virtuelles et leur état
+    (actif, arrêté, en erreur) via \texttt{GET /api/vms/}, avec accès à
+    l'historique via \texttt{GET /api/vms/\{id\}/metrics}.
+
+    \item \textbf{Consulter les ressources OpenShift :}
+    L'utilisateur consulte l'état des pods et namespaces via
+    \texttt{GET /api/pods/}, avec les métriques de consommation CPU
+    et mémoire associées.
+
+    \item \textbf{Recevoir une alerte d'anomalie :}
+    Le moteur d'alertes détecte une saturation ou un état anormal à partir des
+    métriques collectées. L'agent IA enrichit l'alerte avec un score et une
+    recommandation ; l'opérateur peut ensuite l'acquitter, la résoudre ou
+    lancer l'agent AIOps.
+
+    \item \textbf{Lancer une remédiation contrôlée :}
+    L'opérateur ou l'administrateur peut déclencher une remédiation via
+    \texttt{POST /api/alerts/\{id\}/remediate}. L'agent AIOps construit un
+    plan, vérifie les garde-fous et exécute l'action en mode dry-run ou réel
+    selon la configuration.
+
+    \item \textbf{Générer des rapports :}
+    Le responsable peut consulter un résumé de période via
+    \texttt{GET /api/reports/summary} et exporter les alertes, VMs ou pods au
+    format CSV via \texttt{GET /api/reports/export/\{kind\}}.
+
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{architecture_d_cible.png}
+\caption{Architecture cible du système Cloud AI Monitor}
+\label{fig:architecture-cible}
+\end{figure}
+\small
+\textit{Cette architecture présente les principaux composants du système ainsi que les échanges entre les environnements Cloud, le backend, la base de données et l'interface utilisateur.}
+\normalsize
+
+\newpage
+\section{Conception générale}
+
+Cloud AI Monitor repose sur une architecture modulaire orientée services,
+organisée autour d'un backend FastAPI et d'un frontend React.
+
+\subsection{Arborescence du projet}
+
+\begin{lstlisting}[language=bash, caption=Structure du projet Cloud AI Monitor, basicstyle=\footnotesize\ttfamily]
+CloudAIMonitor/
+|-- backend/
+|   |-- main.py                    # FastAPI, CORS, routers, lifespan, WS
+|   |-- config.py                  # Parametres .env (60+ parametres)
+|   |-- database.py                # SQLAlchemy + sessions + migrations
+|   |-- models.py                  # VMs, Pods, Alertes, Users, Audit, Sessions
+|   |-- collector.py               # APScheduler, collecte, reconciliation
+|   |-- alerts.py                  # Moteur de regles d'alertes + audit
+|   |-- ai_agent.py                # Agent IA: vecteur A=[m,l,t], decay model
+|   |-- remediation_agent.py       # Agent AIOps avec garde-fous
+|   |-- predictions.py             # Regression lineaire, time-to-saturation
+|   |-- openstack_client.py        # Keystone, Nova, Neutron, Cinder, Glance
+|   |-- openshift_client.py        # API K8s + remediation (patch, scale)
+|   |-- grafana_client.py          # Requetes Grafana datasources
+|   |-- email_notifications.py     # Pipeline SMTP avec retry
+|   |-- websocket_manager.py       # Diffusion temps reel WS (3s)
+|   |-- audit.py                   # Journal d'audit persistant
+|   |-- soft_quota.py              # Quotas logiciels configurables
+|   |-- vm_stress.py               # Tests de stress VM via SSH
+|   |-- runtime_detection.py       # Detection auto environnement
+|   |-- seed.py                    # Initialisation comptes utilisateurs
+|   |-- mock_data.py               # Donnees de demonstration
+|   `-- routers/
+|       |-- auth.py                # JWT login, RBAC, sessions
+|       |-- admin.py               # Console administration utilisateurs
+|       |-- aiops.py               # Simulateur AIOps, chaos engineering
+|       |-- costs.py               # Analyse des couts d'infrastructure
+|       |-- vms.py                 # VMs + decouverte OpenStack complete
+|       |-- pods.py                # Pods + suppression K8s
+|       |-- alerts.py              # Alertes + workflow complet
+|       |-- reports.py             # Rapports + export CSV
+|       |-- kubernetes.py          # Cluster, noeuds, namespaces
+|       `-- observability.py       # Grafana metriques/logs/traces
+|-- frontend/
+|   `-- src/
+|       |-- App.tsx                # Router, RBAC, WebSocket, dark mode
+|       |-- api/client.ts          # Client Axios + intercepteurs JWT
+|       |-- types/index.ts         # Types TypeScript complets
+|       `-- components/
+|           |-- LoginPage.tsx      # Authentification
+|           |-- Dashboard.tsx      # Tableau de bord principal
+|           |-- VMsPage.tsx        # Machines virtuelles
+|           |-- PodsPage.tsx       # Pods OpenShift
+|           |-- AlertsPage.tsx     # Alertes et workflow
+|           |-- KubernetesPage.tsx # Vue cluster K8s
+|           |-- LogsPage.tsx       # Logs applicatifs
+|           |-- GrafanaVisualizationsPage.tsx  # Visualisations
+|           |-- ReportsPage.tsx    # Rapports et exports
+|           |-- AIOpsPage.tsx      # Simulateur AIOps
+|           |-- CostPage.tsx       # Analyse des couts
+|           |-- AdminPage.tsx      # Administration
+|           |-- InfrastructureMapPage.tsx  # Carte infrastructure
+|           `-- Sidebar.tsx        # Navigation par role
+|-- openshift/                     # Manifestes de deploiement
+|   |-- deployment.yaml            # Application + Service + Route
+|   |-- postgresql.yaml            # Base de donnees + PVC
+|   |-- configmap.yaml             # Configuration non sensible
+|   |-- secrets.yaml               # Secrets (tokens, mots de passe)
+|   `-- stress-test.yaml           # Pod de test de charge
+|-- .github/workflows/deploy.yaml  # CI/CD GitHub Actions
+|-- Dockerfile                     # Image multi-stage optimisee
+|-- docker-compose.yaml            # Stack developpement
+`-- docker-compose.production.yaml # Stack production
+\end{lstlisting}
+
+\subsection{Séparation des couches}
+
+L'architecture respecte une séparation stricte des responsabilités :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{Couche collecte :} les collecteurs OpenStack et OpenShift
+    interrogent respectivement les API Nova/Neutron/Cinder et l'API
+    Kubernetes, orchestrés par APScheduler selon des intervalles
+    configurables.
+    \item \textbf{Couche données :} SQLAlchemy gère la persistance des
+    ressources, métriques, alertes et résultats IA/AIOps dans PostgreSQL.
+    \item \textbf{Couche intelligence :} le moteur d'alertes détecte les
+    anomalies, l'agent IA priorise les incidents et l'agent AIOps prépare ou
+    exécute les remédiations contrôlées.
+    \item \textbf{Couche présentation :} l'API FastAPI expose les données via
+    des endpoints REST consommés par le frontend
+    React, avec un rendu adapté à chaque rôle.
+\end{itemize}
+
+\newpage
+\section{Schéma d'architecture globale}
+\label{sec:architecture-globale}
+
+L'architecture globale de Cloud AI Monitor s'articule autour de quatre zones
+fonctionnelles.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{architecture.png}
+\caption{Schéma d'architecture globale du système Cloud AI Monitor}
+\label{fig:architecture-globale}
+\end{figure}
+\small
+\textbf{Analyse de la figure :}
+La figure illustre l'architecture globale de la plateforme Cloud AI Monitor, organisée selon une architecture multicouche. Les données sont collectées depuis les environnements OpenStack et OpenShift, puis traitées par les services métier avant d'être stockées dans la base de données. Elles sont ensuite exposées via une API REST et affichées dans l'interface web, offrant ainsi une supervision centralisée, évolutive et sécurisée des infrastructures Cloud.
+\normalsize
+\begin{enumerate}[leftmargin=1.5cm, labelsep=0.3cm, itemsep=0.3em,
+                 parsep=0em, topsep=0.3em]
+
+  \item \textbf{Infrastructures supervisées} — un environnement OpenStack
+  (installé via Packstack sur Rocky Linux) hébergeant les machines
+  virtuelles, et un environnement OpenShift (Developer Sandbox) hébergeant
+  les charges de travail conteneurisées.
+
+  \item \textbf{Backend Cloud AI Monitor} — les collecteurs interrogent
+  périodiquement les deux environnements via APScheduler, alimentent
+  PostgreSQL, déclenchent le moteur d'alertes, l'agent IA et l'agent AIOps.
+
+  \item \textbf{API Gateway FastAPI} — expose l'ensemble des fonctionnalités :
+  consultation des ressources, gestion des alertes, rapports, Kubernetes et
+  observabilité.
+
+  \item \textbf{Frontend React} — tableau de bord unifié affichant l'état des
+  VMs OpenStack, des pods OpenShift, des alertes, des logs et des rapports,
+  avec un rendu spécifique selon que l'utilisateur est administrateur,
+  opérateur ou observateur.
+
+\end{enumerate}
+
+\section{Modélisation structurelle}
+
+Les principales entités du modèle de données sont présentées dans le
+diagramme de classes de la figure~\ref{fig:diagramme-classes}, puis décrites
+ci-dessous.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{class.png}
+\caption{Diagramme de classes du système Cloud AI Monitor}
+\label{fig:diagramme-classes}
+\end{figure}
+\small
+\textit{Ce diagramme UML présente les principales classes métier de l'application ainsi que leurs relations. Il constitue la base de la conception de la base de données et des fonctionnalités du système.}
+\normalsize
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.4em, parsep=0em, topsep=0.4em]
+
+    \item \textbf{VMInstance :} représente une machine virtuelle OpenStack
+    (identifiant, nom, statut, projet, CPU, mémoire, date de collecte).
+
+    \item \textbf{PodResource :} représente un pod OpenShift/Kubernetes
+    (namespace, nom, statut, consommation CPU/mémoire).
+
+    \item \textbf{MetricSnapshot :} historise les valeurs de métriques
+    collectées à chaque cycle de l'ordonnanceur.
+
+    \item \textbf{Alert :} enregistre chaque alerte détectée par le moteur de
+    règles, avec sa sévérité, son statut, son acquittement, la décision IA et
+    le résultat de remédiation.
+
+    \item \textbf{AlertDecision et RemediationPlan :} représentent les objets
+    métier produits par les agents IA et AIOps pour expliquer la décision et
+    le plan d'action.
+
+    \item \textbf{User :} représente un compte utilisateur de la plateforme
+    avec son rôle (admin, operator, viewer), le hash bcrypt du mot de passe,
+    l'état du verrouillage, le nombre de tentatives échouées et la date de
+    dernière connexion.
+
+    \item \textbf{LoginSession :} enregistre chaque session de connexion avec
+    l'adresse IP, le User-Agent, le navigateur, le système d'exploitation et
+    l'état actif de la session.
+
+    \item \textbf{AuditLog :} journalise toutes les actions significatives
+    effectuées sur la plateforme (action, acteur, type de ressource,
+    identifiant, détail, métadonnées JSON, horodatage).
+
+    \item \textbf{BrandingConfig :} stocke la configuration de personnalisation
+    visuelle de la plateforme (nom de l'entreprise, chemins des logos et
+    arrière-plans).
+
+\end{itemize}
+
+\newpage
+\section{Modélisation dynamique}
+
+Le pipeline de collecte et d'analyse suit un flux structuré, orchestré par
+APScheduler :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.4em, parsep=0em, topsep=0.4em]
+
+    \item \textbf{Collecte OpenStack (cycle configurable) :} le collecteur
+    interroge les API OpenStack, met à jour la table
+    \texttt{virtual\_machines} et insère les mesures dans
+    \texttt{vm\_metrics}.
+
+    \item \textbf{Collecte OpenShift (cycle configurable) :} le collecteur
+    interroge l'API Kubernetes, met à jour l'état des pods et namespaces
+    dans \texttt{pods} et insère les mesures dans \texttt{pod\_metrics}.
+
+    \item \textbf{Analyse par le moteur d'alertes :} après chaque cycle, les
+    seuils et statuts sont évalués pour créer ou résoudre les alertes.
+
+    \item \textbf{Analyse IA et AIOps :} les alertes sont scorées, enrichies
+    par une recommandation puis transmises à l'agent AIOps pour produire un
+    plan de remédiation contrôlé.
+
+\end{itemize}
+
+\section{Sécurité de la plateforme}
+
+La supervision d'une infrastructure critique impose des exigences de
+sécurité fortes, prises en compte dès la conception :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item \textbf{Gestion des rôles côté interface :} la navigation et les
+    actions visibles sont adaptées aux profils administrateur, opérateur et
+    viewer ;
+    \item \textbf{Protection des secrets :} les identifiants de connexion aux
+    environnements OpenStack, OpenShift et Grafana sont isolés dans le fichier
+    \texttt{.env} du backend ;
+    \item \textbf{Garde-fous AIOps :} dry-run, score minimal, limitation du
+    nombre d'actions, namespaces autorisés et plafonds de capacité ;
+    \item \textbf{Traçabilité fonctionnelle :} les alertes conservent
+    l'acquittement, la note opérateur, le résultat IA et le statut de
+    remédiation ;
+    \item \textbf{Isolation réseau :} communication entre le backend et les
+    environnements Cloud limitée aux flux strictement nécessaires ;
+    \item \textbf{Authentification JWT serveur :} chaque requête est protégée
+    par un jeton signé HS256, avec expiration configurable et verrouillage
+    automatique après 5 tentatives échouées ;
+    \item \textbf{Hachage bcrypt :} les mots de passe sont stockés sous forme
+    de hash bcrypt, jamais en clair ;
+    \item \textbf{En-têtes de sécurité :} le middleware FastAPI ajoute
+    \texttt{X-Content-Type-Options}, \texttt{X-Frame-Options},
+    \texttt{X-XSS-Protection} et \texttt{Referrer-Policy} à chaque réponse.
+\end{itemize}
+
+\section{Choix technologiques}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|p{3.5cm}|p{3.5cm}|p{6.5cm}|}
+\hline
+\textbf{Composant} & \textbf{Technologie} & \textbf{Justification} \\
+\hline
+Backend API & FastAPI (Python 3.11) & Haute performance asynchrone, documentation OpenAPI automatique \\
+\hline
+Frontend & React + TypeScript + Vite & Composants réactifs, typage statique, build rapide \\
+\hline
+Base de données & PostgreSQL + SQLAlchemy & Robustesse, ORM flexible et asynchrone \\
+\hline
+Planification & APScheduler & Intégration légère au processus FastAPI, pas d'infrastructure de messagerie supplémentaire \\
+\hline
+Observabilité & Grafana & Visualisation des métriques, logs et traces lorsque les datasources sont configurées \\
+\hline
+Rôles frontend & React Router & Séparation des vues administrateur, opérateur et viewer \\
+\hline
+Cloud IaaS & OpenStack (Nova, Neutron, Cinder) & Plateforme Cloud open source de référence \\
+\hline
+Cloud PaaS & OpenShift / Kubernetes & Standard d'orchestration de conteneurs en entreprise \\
+\hline
+Authentification & JWT + bcrypt (passlib, jose) & Standard industriel, stateless, compatible microservices \\
+\hline
+Temps réel & WebSocket (FastAPI natif) & Diffusion bidirectionnelle sans polling \\
+\hline
+Conteneurisation & Docker multi-stage & Image optimisée, compatible OpenShift (non-root) \\
+\hline
+CI/CD & GitHub Actions & Automatisation complète du build au déploiement \\
+\hline
+Tests de charge & stress-ng (K8s + SSH) & Génération d'incidents réalistes pour validation IA \\
+\hline
+\end{tabular}
+\caption{Choix technologiques et justifications}
+\end{table}
+
+\section{Modèle mathématique de l'agent IA}
+
+L'agent IA de Cloud AI Monitor repose sur un modèle mathématique à trois
+piliers, conçu pour être à la fois explicable et extensible :
+
+\subsection{Vecteur d'anomalie}
+
+Chaque alerte est caractérisée par un vecteur d'anomalie
+$\mathbf{A} = [m, l, t]$ où :
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item $m \in [0, 1]$ : composante métriques (sévérité, dépassement de
+    seuil, état de la ressource, récurrence) ;
+    \item $l \in [0, 1]$ : composante logs (correspondance avec la base de
+    connaissances) ;
+    \item $t \in [0, 1]$ : composante traces (signaux de latence, timeout,
+    réseau).
+\end{itemize}
+
+La norme euclidienne normalisée est :
+$|\mathbf{A}| = \frac{\sqrt{m^2 + l^2 + t^2}}{\sqrt{3}}$
+
+\subsection{Modèle de décroissance de santé}
+
+Le score de santé $H$ est calculé via un modèle exponentiel de décroissance :
+
+$$H = 100 \cdot \exp\left(-\lambda \cdot |\mathbf{A}|^2\right)$$
+
+où $\lambda$ est un paramètre de décroissance ajusté selon la sévérité :
+$\lambda_{\text{critical}} = 2.8$, $\lambda_{\text{warning}} = 1.4$,
+$\lambda_{\text{info}} = 0.5$.
+
+\subsection{Paliers de décision}
+
+Le score IA final ($S = 100 - H$ + bonus base de connaissances) détermine
+le palier de décision :
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|l|p{7.5cm}|}
+\hline
+\textbf{Score} & \textbf{Décision} & \textbf{Action} \\
+\hline
+$\geq 78$ & \texttt{escalate} & Intervention N2/N3 immédiate \\
+\hline
+$52 - 77$ & \texttt{investigate} & Analyse approfondie des 30 dernières minutes \\
+\hline
+$32 - 51$ & \texttt{watch} & Surveillance sur le prochain cycle \\
+\hline
+$< 32$ & \texttt{suppress} & Probable bruit, pas d'action requise \\
+\hline
+\end{tabular}
+\caption{Paliers de décision de l'agent IA}
+\end{table}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a présenté la conception technique complète de Cloud AI Monitor :
+analyse des besoins, acteurs, cas d'utilisation, architecture en quatre zones
+fonctionnelles, modèle de données et mesures de sécurité. Le chapitre suivant
+détaille la phase d'implémentation, les interfaces utilisateur, les
+difficultés rencontrées lors de la mise en place de l'infrastructure, ainsi
+que les résultats des tests de validation.
+
+% =========================================================
+% CHAPITRE 6 — Développement, validation et résultats
+% =========================================================
+\newpage
+\chapter{Développement, validation et résultats}
+
+\section*{Introduction du chapitre}
+\addcontentsline{toc}{section}{Introduction du chapitre}
+
+Ce chapitre présente la mise en œuvre concrète de Cloud AI Monitor. Il décrit
+l'environnement de développement, l'état d'avancement de l'infrastructure
+(OpenStack et OpenShift), les fonctionnalités implémentées côté backend et
+frontend, les interfaces utilisateur propres à chaque rôle, les difficultés
+techniques rencontrées, ainsi que les tests réalisés et les perspectives de
+validation.
+
+\section{Environnement de développement}
+
+\subsection*{Outils, langages et technologies}
+
+\subsubsection*{Backend}
+
+\begin{itemize}
+  \item \textbf{Langage :} Python 3.11
+  \item \textbf{Framework web :} FastAPI (serveur ASGI asynchrone)
+  \item \textbf{ORM / Base de données :} SQLAlchemy connecté à
+    \textbf{PostgreSQL}
+  \item \textbf{Planification des tâches :} APScheduler
+  \item \textbf{Intégration Cloud :} API REST OpenStack (Keystone, Nova,
+    Cinder) et API Kubernetes/OpenShift avec jeton d'accès
+  \item \textbf{Observabilité :} client Grafana pour les métriques, logs et
+    traces lorsque les datasources sont configurées
+  \item \textbf{Intelligence opérationnelle :} agent IA de décision NOC et
+    agent AIOps d'auto-remédiation contrôlée
+  \item \textbf{Notifications :} module d'envoi d'e-mails pour les alertes
+    lorsque la configuration SMTP est disponible
+\end{itemize}
+
+\subsubsection*{Frontend}
+
+\begin{itemize}
+  \item \textbf{Framework :} React + TypeScript
+  \item \textbf{Bundler :} Vite
+  \item \textbf{Communication API :} Axios
+  \item \textbf{Visualisation :} Recharts et composants React dédiés aux
+    indicateurs d'infrastructure
+  \item \textbf{Style :} charte graphique CIRES Technologies (bleu marine \&
+    orange), composants réutilisables pour les tableaux de bord, déclinés en
+    trois espaces de travail selon le rôle de l'utilisateur
+\end{itemize}
+
+\subsubsection*{Infrastructure de test}
+
+\begin{itemize}
+  \item \textbf{OpenStack :} déploiement via \textbf{Packstack} sur
+    \textbf{Rocky Linux}, hébergé dans une machine virtuelle
+    \textbf{VirtualBox} sur le poste de développement.
+  \item \textbf{OpenShift :} connexion au \textbf{OpenShift Developer
+    Sandbox} (Red Hat) avec des identifiants réels pour la phase de test.
+  \item \textbf{IDE :} Visual Studio Code
+  \item \textbf{Versionnement :} Git
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\imgplaceholder{topologie-infra-test.png}{Topologie réseau de l'environnement de test : hôte Windows, VM VirtualBox (Rocky Linux + OpenStack), accès distant OpenShift Sandbox}
+\caption{Topologie de l'infrastructure de test OpenStack / OpenShift}
+\label{fig:topologie-infra}
+\end{figure}
+
+\section{État d'avancement de l'implémentation}
+
+Au moment de la rédaction de cette version mise à jour, le projet dispose
+d'une base applicative fonctionnelle couvrant la collecte, la persistance,
+l'affichage des ressources, la gestion des alertes, l'analyse IA et la
+remédiation contrôlée. Le backend peut fonctionner en mode réel lorsque les
+accès OpenStack/OpenShift sont disponibles, ou en mode démonstration grâce aux
+données simulées.
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item Backend FastAPI opérationnel avec routes REST pour le tableau de
+    bord, les VMs, les pods, les alertes, Kubernetes, les rapports et
+    l'observabilité ;
+    \item Modèle de données SQLAlchemy couvrant les machines virtuelles, pods,
+    métriques VM, métriques pod et alertes enrichies par les résultats IA/AIOps ;
+    \item Collecteur APScheduler capable d'interroger OpenStack et
+    OpenShift/Kubernetes, avec mode mock pour les tests et démonstrations ;
+    \item Moteur d'alertes appliquant les règles CPU, RAM, statut VM, statut
+    pod et redémarrages répétés ;
+    \item Agent IA NOC calculant un score, une catégorie, une décision et une
+    recommandation pour chaque alerte ;
+    \item Agent AIOps construisant un plan de remédiation, appliquant des
+    garde-fous et exécutant les actions en mode dry-run ou réel selon la
+    configuration ;
+    \item Module de rapports proposant un résumé opérationnel et des exports
+    CSV des alertes, VMs et pods ;
+    \item Intégration Grafana prévue pour les métriques, logs et traces, avec
+    données de démonstration lorsque les datasources ne sont pas configurées ;
+    \item Frontend React/TypeScript/Vite avec pages Dashboard, VMs, Pods,
+    Alertes, Kubernetes, Logs, Visualisations Grafana, Rapports et carte
+    d'infrastructure ;
+    \item Infrastructure de test composée d'un hôte Windows, d'une VM
+    VirtualBox Rocky Linux/OpenStack et d'un accès distant OpenShift Sandbox.
+\end{itemize}
+
+Les prochaines étapes concernent surtout l'amélioration du moteur d'analyse
+IA avec des modèles d'apprentissage supervisé, l'extension multi-cloud et
+l'augmentation de la couverture des tests automatisés.
+
+\section{Interfaces utilisateur}
+
+Le frontend de Cloud AI Monitor propose trois espaces de travail distincts,
+partageant une identité visuelle commune (bleu marine et orange, cohérente
+avec la charte graphique de CIRES Technologies) mais adaptés aux besoins de
+chaque rôle.
+
+\subsection{Tableau de bord principal}
+
+Le tableau de bord principal affiche une synthèse de l'état de
+l'infrastructure : nombre de VMs OpenStack actives, nombre de pods OpenShift
+en cours d'exécution, indicateurs de santé globale et fil des dernières
+alertes.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{dashboard.png}
+\caption{Tableau de bord principal de Cloud AI Monitor}
+\label{fig:dashboard-principal}
+\end{figure}
+\small
+\textit{Le tableau de bord principal fournit une vue synthétique de l'état de l'infrastructure. Il affiche les indicateurs de santé, les statistiques des ressources et les alertes en temps réel.}
+\normalsize
+\subsection{LOGIN Interface }
+
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{admin.png}
+\caption{LOGIN     interface  de Cloud AI Monitor}
+\label{fig:interface-admin}
+\end{figure}
+
+\subsection{Interface Opérateur  }
+
+L'espace Opérateur met en avant les alertes actives, permet leur
+acquittement et donne accès aux vues détaillées des ressources OpenStack et
+OpenShift pour effectuer les actions correctives de premier niveau.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{operator.png}
+\caption{Interface « Opérateur » de Cloud AI Monitor}
+\label{fig:interface-operateur}
+\end{figure}
+\small
+\textit{Cette interface est destinée aux opérateurs chargés du suivi des alertes. Elle facilite la surveillance des ressources et l'exécution des actions correctives de premier niveau.}
+\normalsize
+\subsection{Interface Observateur (Viewer)}
+
+L'espace Observateur propose une vue en lecture seule des tableaux de bord et
+des métriques, destinée aux parties prenantes souhaitant suivre l'état de
+l'infrastructure sans disposer de droits d'action sur le système.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{viewer.png}
+\caption{Interface « Observateur / Viewer » de Cloud AI Monitor}
+\label{fig:interface-observateur}
+\end{figure}
+\small
+\textit{Cette interface propose un accès en lecture seule aux tableaux de bord et aux métriques afin de permettre le suivi de l'infrastructure sans possibilité de modification.}
+\normalsize
+\subsection{Vue des ressources OpenStack}
+
+Cette vue liste l'ensemble des machines virtuelles OpenStack avec leur
+statut, leur projet d'appartenance et leurs métriques de consommation, avec
+des options de filtrage.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{openstack.png}
+\caption{Vue des ressources OpenStack (machines virtuelles)}
+\label{fig:vue-openstack}
+\end{figure}
+\small
+\textit{Cette vue affiche les machines virtuelles OpenStack avec leurs états, leurs caractéristiques et leurs métriques de consommation afin de faciliter leur supervision et leur gestion.}
+\normalsize
+\subsection{Vue des ressources OpenShift}
+
+Cette vue liste les pods et namespaces OpenShift avec leur statut et leur
+consommation de ressources, alignée avec la vue OpenStack pour faciliter la
+corrélation entre les deux environnements.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{openshift.png}
+\caption{Vue des ressources OpenShift (pods et namespaces)}
+\label{fig:vue-openshift}
+\end{figure}
+\small
+\textit{Cette vue présente les pods et les namespaces OpenShift avec leurs informations de fonctionnement et leurs métriques de consommation pour assurer une supervision complète des ressources conteneurisées.}
+\normalsize
+\subsection{Vue Kubernetes, logs et visualisations}
+
+La version actuelle ajoute également des vues dédiées au cluster Kubernetes :
+vue d'ensemble du cluster, capacité des noeuds, namespaces, workloads,
+mesures agrégées, logs applicatifs et visualisations d'observabilité. Ces
+écrans facilitent l'analyse croisée entre l'état des workloads conteneurisés,
+les métriques d'infrastructure et les événements remontés par Grafana.
+
+\subsection{Interface AIOps et simulateur}
+
+L'espace AIOps offre un simulateur interactif permettant de manipuler
+les composantes du vecteur d'anomalie $A = [m, l, t]$ à l'aide de curseurs,
+d'injecter des anomalies artificielles dans le pipeline et d'observer en
+temps réel le raisonnement de l'agent IA ainsi que le plan de remédiation
+généré. Cette interface constitue également le point d'accès aux tests de
+charge (\textit{chaos engineering}) permettant de déployer un pod de stress
+dans le cluster OpenShift afin de déclencher la boucle complète d'auto-guérison.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{aiops_simulator.png}
+\caption{Interface AIOps — simulateur de vecteur d'anomalie et injection}
+\label{fig:aiops-simulator}
+\end{figure}
+
+\subsection{Interface d'analyse des coûts}
+
+La page d'analyse des coûts calcule en temps réel les dépenses
+d'infrastructure à partir des métriques effectivement collectées (CPU, RAM,
+stockage, réseau). Elle présente les économies réalisées grâce à
+l'auto-remédiation IA, un calcul de ROI, des projections mensuelles et
+annuelles, ainsi qu'une chronologie horaire des coûts permettant d'identifier
+les pics de consommation.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{cost_analysis.png}
+\caption{Interface d'analyse des coûts et du retour sur investissement}
+\label{fig:cost-analysis}
+\end{figure}
+
+\subsection{Console d'administration}
+
+L'interface d'administration, réservée au rôle administrateur via un
+contrôle RBAC serveur, permet la gestion complète des comptes utilisateurs :
+création, suppression, activation, désactivation, verrouillage, changement de
+rôle et réinitialisation du mot de passe. Elle affiche également la liste des
+sessions de connexion actives avec l'adresse IP, le navigateur, le système
+d'exploitation et la date de dernière activité.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{admin_panel.png}
+\caption{Console d'administration — gestion des utilisateurs et sessions}
+\label{fig:admin-panel}
+\end{figure}
+
+\subsection{Page d'infrastructure OpenStack}
+
+La page d'infrastructure OpenStack offre une vue exhaustive de l'ensemble
+des ressources découvertes : instances, réseaux, sous-réseaux, routeurs, IPs
+flottantes, volumes, images, hyperviseurs, groupes de sécurité et quotas.
+Elle permet aux opérateurs d'obtenir une cartographie complète de
+l'environnement sans recourir aux outils CLI d'OpenStack.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{infrastructure_map.png}
+\caption{Page d'infrastructure OpenStack — découverte complète de l'environnement}
+\label{fig:infra-map}
+\end{figure}
+
+\section{Fonctionnalités développées}
+
+\subsection*{6.4.1 -- Collecte et centralisation des métriques}
+
+Les collecteurs interrogent respectivement les API OpenStack et Kubernetes
+selon un cycle configurable piloté par APScheduler. Chaque cycle enrichit la
+base de données avec l'état courant des ressources et un instantané de
+métriques, permettant de reconstituer un historique exploitable pour
+l'analyse de tendance.
+
+\subsection*{6.4.2 -- API REST}
+
+L'ensemble des données est exposé par une API RESTful FastAPI. Le
+tableau~\ref{tab:api} résume les principaux endpoints développés dans la
+version actuelle.
+
+\begin{table}[H]
+\centering
+\caption{Principaux endpoints de l'API Cloud AI Monitor}
+\label{tab:api}
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Méthode} & \textbf{Route} & \textbf{Description} \\
+\hline
+GET  & \texttt{/api/health}                  & Vérification de l'état de l'API \\
+GET  & \texttt{/api/dashboard/stats}         & Synthèse globale de l'infrastructure \\
+GET  & \texttt{/api/vms/}                    & Liste et statut des VMs OpenStack \\
+GET  & \texttt{/api/vms/\{id\}/metrics}      & Historique des métriques d'une VM \\
+GET  & \texttt{/api/pods/}                   & Liste des pods OpenShift/Kubernetes \\
+GET  & \texttt{/api/pods/\{id\}/metrics}     & Historique des métriques d'un pod \\
+GET  & \texttt{/api/alerts/}                 & Consultation et filtrage des alertes \\
+PATCH & \texttt{/api/alerts/\{id\}/acknowledge} & Acquittement d'une alerte \\
+PATCH & \texttt{/api/alerts/\{id\}/resolve} & Résolution manuelle d'une alerte \\
+PATCH & \texttt{/api/alerts/\{id\}/assign}  & Assignation d'une alerte à un opérateur \\
+POST & \texttt{/api/alerts/\{id\}/agent}    & Relance de l'analyse IA \\
+POST & \texttt{/api/alerts/\{id\}/remediate} & Lancement d'une remédiation AIOps \\
+POST & \texttt{/api/alerts/agent/reprocess} & Retraitement IA de toutes les alertes actives \\
+GET  & \texttt{/api/reports/summary}         & Résumé opérationnel et financier \\
+GET  & \texttt{/api/reports/export/\{kind\}} & Export CSV des alertes, VMs ou pods \\
+GET  & \texttt{/api/kubernetes/*}            & Vues cluster, noeuds, namespaces et mesures \\
+GET  & \texttt{/api/observability/*}         & Grafana, métriques, logs, traces et visualisations \\
+POST & \texttt{/api/auth/login}             & Authentification JWT \\
+POST & \texttt{/api/auth/logout}            & Déconnexion et invalidation de session \\
+GET  & \texttt{/api/auth/me}               & Informations de l'utilisateur courant \\
+POST & \texttt{/api/auth/change-password}   & Changement de mot de passe \\
+GET  & \texttt{/api/admin/users}            & Liste des utilisateurs (admin) \\
+POST & \texttt{/api/admin/users}            & Création d'un utilisateur (admin) \\
+GET  & \texttt{/api/admin/sessions}         & Liste des sessions de connexion \\
+GET  & \texttt{/api/costs/summary}          & Analyse des coûts d'infrastructure \\
+GET  & \texttt{/api/costs/timeline}         & Chronologie horaire des coûts \\
+POST & \texttt{/api/aiops/simulate/vector}  & Simulation mathématique de vecteur d'anomalie \\
+POST & \texttt{/api/aiops/simulate/inject}  & Injection d'anomalie dans le pipeline \\
+POST & \texttt{/api/aiops/resolve-all}      & Résolution globale par l'IA \\
+POST & \texttt{/api/aiops/chaos/deploy-stress} & Déploiement d'un pod de stress \\
+DELETE & \texttt{/api/aiops/chaos/cleanup}  & Nettoyage intelligent du namespace \\
+GET  & \texttt{/api/aiops/predictions}      & Prédictions de saturation \\
+GET  & \texttt{/api/vms/openstack/environment} & Découverte complète OpenStack \\
+DELETE & \texttt{/api/pods/\{id\}}           & Suppression d'un pod via K8s API \\
+WS   & \texttt{/ws/live}                    & Diffusion temps réel WebSocket \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{6.4.3 -- Moteur d'alertes et détection d'anomalies}
+
+Le moteur d'alertes transforme les métriques collectées en alertes
+opérationnelles. Il prend en charge les seuils CPU/RAM, les VMs en statut
+\texttt{ERROR}, les pods \texttt{Failed} ou \texttt{Unknown} et les pods ayant
+un nombre élevé de redémarrages. Le moteur évite les doublons d'alertes
+actives et résout automatiquement les alertes lorsque les conditions
+reviennent à la normale.
+
+\subsection*{6.4.4 -- Agent IA de décision NOC}
+
+L'agent IA analyse chaque alerte afin de produire un score de criticité entre
+0 et 100, une catégorie (\texttt{compute}, \texttt{container} ou
+\texttt{infrastructure}), une décision opérationnelle
+(\texttt{escalate}, \texttt{investigate}, \texttt{watch} ou
+\texttt{suppress}), une justification et une recommandation. Cette logique
+permet de réduire le bruit opérationnel et de prioriser les incidents les plus
+importants.
+
+\subsection*{6.4.5 -- Agent AIOps d'auto-remédiation}
+
+L'agent AIOps choisit une action corrective selon le type d'alerte :
+extension de stockage, redimensionnement mémoire, récupération de VM,
+redémarrage contrôlé d'un workload ou ouverture d'incident. Avant toute
+exécution, il vérifie plusieurs garde-fous : mode dry-run, score IA minimum,
+limite d'actions par heure, namespaces Kubernetes autorisés, plafond de
+stockage et validation humaine pour les actions sensibles.
+
+\subsection*{6.4.6 -- Rapports, exports et indicateurs financiers}
+
+Le module de rapports génère une synthèse sur une période configurable :
+inventaire, disponibilité, moyennes CPU/RAM, alertes actives et indicateurs
+financiers estimatifs. Il permet aussi d'exporter en CSV les alertes, les VMs
+et les pods afin de faciliter l'analyse hors plateforme.
+
+\subsection*{6.4.7 -- Observabilité Grafana}
+
+Le backend intègre un client Grafana capable d'interroger des datasources de
+métriques, logs et traces. Lorsque Grafana n'est pas configuré, la plateforme
+retourne des données de démonstration afin de conserver une interface
+exploitable pendant les tests.
+
+\subsection*{6.4.8 -- Gestion des rôles et des espaces de travail}
+
+Le frontend adapte dynamiquement la navigation et les actions disponibles en
+fonction du rôle de l'utilisateur authentifié, garantissant qu'un observateur
+ne puisse accéder à aucune fonctionnalité de modification, conformément au
+modèle RBAC défini en conception. Dans la version actuelle, ce contrôle est
+principalement appliqué côté frontend ; son renforcement côté backend fait
+partie des perspectives prioritaires.
+
+\subsection*{6.4.9 -- Authentification JWT et sécurité backend}
+
+La version actuelle intègre un système d'authentification complet côté
+serveur, fondé sur les jetons JWT (JSON Web Tokens) et le hachage bcrypt
+des mots de passe. Le module \texttt{backend/routers/auth.py} implémente
+les fonctionnalités suivantes :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item Authentification par nom d'utilisateur et mot de passe avec
+    génération d'un jeton JWT signé (algorithme HS256) ;
+    \item Verrouillage automatique du compte après 5 tentatives de connexion
+    échouées ;
+    \item Enregistrement de chaque session de connexion avec l'adresse IP,
+    le navigateur et le système d'exploitation (analyse du User-Agent) ;
+    \item Déconnexion avec invalidation de la session active ;
+    \item Changement de mot de passe par l'utilisateur avec validation de
+    l'ancien ;
+    \item Intercepteur Axios côté frontend attachant automatiquement le jeton
+    à chaque requête et redirigeant vers la page de connexion en cas de
+    réponse 401.
+\end{itemize}
+
+Le contrôle d'accès basé sur les rôles (RBAC) est désormais appliqué côté
+serveur grâce aux dépendances FastAPI \texttt{require\_auth} et
+\texttt{require\_role}, garantissant qu'un utilisateur non authentifié ou
+dépourvu du rôle requis reçoive une réponse 401 ou 403 sans accès aux
+données protégées.
+
+\textbf{Fichiers concernés :} \texttt{backend/routers/auth.py},
+\texttt{backend/seed.py}, \texttt{backend/models.py} (tables \texttt{users}
+et \texttt{login\_sessions}), \texttt{frontend/src/api/client.ts}.
+
+\subsection*{6.4.10 -- Console d'administration des utilisateurs}
+
+Le module d'administration (\texttt{backend/routers/admin.py}), accessible
+uniquement au rôle administrateur, expose une API complète de gestion des
+comptes et des sessions :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{CRUD utilisateurs :} création avec génération de mot de
+    passe aléatoire sécurisé, suppression, activation et désactivation ;
+    \item \textbf{Gestion des verrous :} déverrouillage manuel d'un compte
+    verrouillé après trop de tentatives ;
+    \item \textbf{Changement de rôle :} promotion ou rétrogradation entre
+    \texttt{operator} et \texttt{viewer} ;
+    \item \textbf{Réinitialisation de mot de passe :} génération d'un mot de
+    passe temporaire avec option de forcer le changement à la prochaine
+    connexion ;
+    \item \textbf{Suivi des sessions :} liste de toutes les sessions avec IP,
+    navigateur, OS et possibilité de les terminer à distance.
+\end{itemize}
+
+Chaque opération sensible est accompagnée d'une entrée dans le journal
+d'audit, assurant la traçabilité complète des actions administratives.
+
+\subsection*{6.4.11 -- Diffusion temps réel par WebSocket}
+
+Le module \texttt{backend/websocket\_manager.py} implémente une passerelle
+WebSocket permettant la diffusion en temps réel de l'état de l'infrastructure
+vers tous les clients connectés. Un coroutine de diffusion, lancée au
+démarrage de l'application, construit et envoie un instantané complet toutes
+les 3 secondes :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item KPIs du tableau de bord (VMs actives, pods en exécution, alertes
+    critiques, score de santé) ;
+    \item Liste des 10 alertes les plus critiques avec leur vecteur d'anomalie
+    et leur score IA ;
+    \item Agrégat du vecteur d'anomalie moyen sur toutes les alertes actives ;
+    \item Informations sur l'environnement d'exécution détecté.
+\end{itemize}
+
+Le frontend se connecte automatiquement au point d'accès \texttt{/ws/live}
+après l'authentification et affiche les indicateurs en direct dans la barre
+supérieure de l'application, incluant le nombre de VMs, pods, alertes et le
+score de santé global.
+
+\subsection*{6.4.12 -- Module de prédiction par régression linéaire}
+
+Le module \texttt{backend/predictions.py} implémente un moteur de prédiction
+fondé sur la régression linéaire des moindres carrés, appliquée aux séries
+temporelles de métriques historiques. Pour chaque pod et chaque VM, le
+système calcule :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item La tendance (croissante, stable, décroissante) ;
+    \item La pente de variation par heure ;
+    \item Le temps estimé avant saturation (100\% CPU, 100\% RAM ou seuil de
+    redémarrages) ;
+    \item Un indice de confiance basé sur le coefficient de détermination
+    $R^2$ et le nombre de points de données.
+\end{itemize}
+
+Ce module est exposé via les endpoints \texttt{GET /api/aiops/predictions}
+et \texttt{GET /api/vms/predictions}, permettant aux opérateurs d'anticiper
+les incidents avant qu'ils ne se produisent.
+
+\subsection*{6.4.13 -- Analyse des coûts d'infrastructure}
+
+Le routeur \texttt{backend/routers/costs.py} calcule les coûts
+d'infrastructure à partir des métriques réellement collectées dans la base
+de données, selon un modèle de tarification interne à CIRES Technologies :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{CPU :} facturation par vCPU-heure d'utilisation effective ;
+    \item \textbf{RAM :} facturation par Go-heure d'utilisation ;
+    \item \textbf{Stockage :} facturation par Go/mois provisionné (PVC
+    Kubernetes) ;
+    \item \textbf{Réseau :} estimation basée sur l'activité des pods ;
+    \item \textbf{Économies IA :} calcul du coût des incidents évités grâce à
+    l'auto-remédiation (coût d'intervention manuelle et coût
+    d'indisponibilité évité) ;
+    \item \textbf{ROI :} rapport entre les économies et le coût total ;
+    \item \textbf{Chronologie :} agrégation horaire des coûts pour
+    visualisation graphique.
+\end{itemize}
+
+\subsection*{6.4.14 -- Gestion des quotas logiciels (Soft Quota)}
+
+Le module \texttt{backend/soft\_quota.py} implémente un système de quotas
+logiciels configurables, définissant un pourcentage des limites matérielles
+du Sandbox OpenShift à utiliser comme plafond opérationnel. Trois niveaux de
+seuils sont définis :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{Warning (80\%)} : alerte préventive ;
+    \item \textbf{Critical (90\%)} : alerte critique ;
+    \item \textbf{Remediate (95\%)} : déclenchement automatique d'un
+    nettoyage du namespace pour libérer des ressources.
+\end{itemize}
+
+Le collecteur évalue ces quotas à chaque cycle et génère les alertes
+appropriées. Le module expose également une fonction
+\texttt{get\_top\_consumers} identifiant les pods les plus consommateurs.
+
+\subsection*{6.4.15 -- Simulateur AIOps et ingénierie du chaos}
+
+Le routeur \texttt{backend/routers/aiops.py} expose un ensemble d'endpoints
+permettant de démontrer et de tester interactivement le pipeline AIOps :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{Simulation de vecteur :} calcul du score de santé et de la
+    décision IA pour un vecteur $A = [m, l, t]$ donné, sans toucher à la
+    base de données (endpoint purement mathématique) ;
+    \item \textbf{Injection d'anomalie :} création d'une alerte simulée
+    traversant le pipeline complet (analyse IA + remédiation) ;
+    \item \textbf{Simulation de seuils :} évaluation de l'impact d'un
+    changement de configuration sur les alertes actives existantes ;
+    \item \textbf{Déploiement de pods de stress :} déploiement d'un
+    \textit{Deployment} Kubernetes exécutant \texttt{stress-ng} avec
+    intensité et durée configurables pour saturer CPU ou RAM et déclencher
+    la boucle d'auto-guérison ;
+    \item \textbf{Test de stress VM via SSH :} exécution de
+    \texttt{stress-ng} directement sur une VM OpenStack via SSH (module
+    \texttt{vm\_stress.py} utilisant \texttt{paramiko}), avec nettoyage
+    automatique après expiration.
+\end{itemize}
+
+\subsection*{6.4.16 -- Journal d'audit}
+
+Le module \texttt{backend/audit.py} implémente un journal d'audit persistant
+dans la table \texttt{audit\_logs}. Chaque action significative de la
+plateforme est enregistrée avec l'acteur, le type de ressource, l'identifiant
+de la ressource, un détail textuel et des métadonnées supplémentaires en JSON.
+Les actions tracées incluent :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item Cycle de vie des alertes (création, acquittement, assignation,
+    résolution) ;
+    \item Remédiations (déclenchement, application, blocage) ;
+    \item Analyses IA (retraitement, injection) ;
+    \item Authentification (connexion, déconnexion) ;
+    \item Administration (création, suppression, désactivation, changement de
+    rôle, changement de mot de passe).
+\end{itemize}
+
+\subsection*{6.4.17 -- Détection automatique de l'environnement d'exécution}
+
+Le module \texttt{backend/runtime\_detection.py} identifie automatiquement
+au démarrage l'environnement dans lequel l'application s'exécute, selon
+l'ordre de priorité suivant :
+
+\begin{enumerate}[leftmargin=1.5cm, labelsep=0.3cm, itemsep=0.1em]
+    \item \textbf{Pod OpenShift/Kubernetes} — détecté via le jeton de compte
+    de service monté ou la variable \texttt{KUBERNETES\_SERVICE\_HOST} ;
+    \item \textbf{VM OpenStack} — détecté via le service de métadonnées
+    (169.254.169.254) ;
+    \item \textbf{Conteneur Docker/Podman} — détecté via \texttt{/proc/1/cgroup}
+    ou \texttt{/.dockerenv} ;
+    \item \textbf{Développement local} — fallback par défaut.
+\end{enumerate}
+
+Cette information est affichée dans la barre supérieure du frontend et
+incluse dans les réponses WebSocket, permettant aux opérateurs de savoir
+instantanément où s'exécute l'instance de la plateforme.
+
+\subsection*{6.4.18 -- Notifications email SMTP}
+
+Le module \texttt{backend/email\_notifications.py} implémente un pipeline
+de notifications email complet avec :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item Connexion SMTP avec TLS et authentification ;
+    \item Logique de retry (3 tentatives avec délai) ;
+    \item Génération de rapports d'incident structurés incluant : résumé,
+    analyse IA (score, décision, confiance), actions de remédiation,
+    métriques avant/après, statut final ;
+    \item Quatre types de notifications : alerte créée, remédiation exécutée,
+    résolution globale, nettoyage de namespace.
+\end{itemize}
+
+Le système est conçu pour ne jamais interrompre le pipeline de monitoring en
+cas d'erreur SMTP.
+
+\subsection*{6.4.19 -- Découverte complète de l'environnement OpenStack}
+
+Le client OpenStack (\texttt{backend/openstack\_client.py}) a été étendu pour
+couvrir l'intégralité des services OpenStack accessibles :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \textbf{Nova :} instances, diagnostics, hyperviseurs, flavors,
+    quotas, limites, actions (hard reboot, stop, live migration, resize) ;
+    \item \textbf{Neutron :} réseaux, sous-réseaux, routeurs, IPs flottantes,
+    groupes de sécurité, ports ;
+    \item \textbf{Cinder :} volumes (liste, détail, extension) ;
+    \item \textbf{Glance :} images ;
+    \item \textbf{Fonction de découverte globale :}
+    \texttt{discover\_environment()} retournant l'intégralité des ressources
+    en un seul appel.
+\end{itemize}
+
+Ces données alimentent la page d'infrastructure du frontend, offrant une
+cartographie complète sans recours aux outils CLI.
+
+\subsection*{6.4.20 -- Mode sombre (Dark Mode)}
+
+L'application frontend intègre un mode sombre commutable via un bouton dans
+la barre supérieure. Le choix est persisté dans le \texttt{localStorage} du
+navigateur. L'ensemble des composants, graphiques et tableaux s'adaptent
+dynamiquement au thème sélectionné grâce à des variables CSS
+(\texttt{--bg}, \texttt{--text}, \texttt{--border}, etc.).
+
+\section{Déploiement et industrialisation}
+
+\subsection{Conteneurisation Docker multi-étape}
+
+L'application est conteneurisée via un Dockerfile multi-étape optimisé pour
+la production :
+
+\begin{enumerate}[leftmargin=1.5cm, labelsep=0.3cm, itemsep=0.2em]
+    \item \textbf{Étape 1 (Node 18 Alpine)} : compilation du frontend React
+    via \texttt{npm ci} et \texttt{npm run build} ;
+    \item \textbf{Étape 2 (Python 3.11 Slim)} : installation des dépendances
+    Python, copie du backend et du frontend compilé dans un dossier
+    \texttt{static/}, configuration d'un utilisateur non-root pour la
+    compatibilité OpenShift.
+\end{enumerate}
+
+L'image finale intègre un \texttt{HEALTHCHECK} appelant l'endpoint
+\texttt{/api/health} et expose le port 8080 (convention OpenShift). Le
+serveur Uvicorn sert à la fois l'API FastAPI et les fichiers statiques React,
+éliminant le besoin d'un reverse proxy externe.
+
+\subsection{Orchestration Docker Compose}
+
+Deux fichiers Docker Compose sont fournis :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.1em, parsep=0em, topsep=0.2em]
+    \item \texttt{docker-compose.yaml} — environnement de développement
+    avec build local de l'image ;
+    \item \texttt{docker-compose.production.yaml} — déploiement de production
+    utilisant l'image pré-construite \texttt{cloud-ai-monitor:latest}.
+\end{itemize}
+
+Chaque configuration déploie PostgreSQL 15 Alpine avec vérification de santé
+(\texttt{pg\_isready}) et l'application Cloud AI Monitor avec l'ensemble des
+variables d'environnement configurables. Les volumes Docker assurent la
+persistance des données PostgreSQL et du branding personnalisé.
+
+\subsection{Manifestes OpenShift}
+
+Le dossier \texttt{openshift/} contient l'ensemble des manifestes Kubernetes
+nécessaires au déploiement sur OpenShift Developer Sandbox :
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{4.5cm}|p{9cm}|}
+\hline
+\textbf{Fichier} & \textbf{Rôle} \\
+\hline
+\texttt{namespace.yaml} & Référence du namespace \texttt{red1intheocean-dev} \\
+\hline
+\texttt{deployment.yaml} & Deployment applicatif + Service + Route TLS edge, avec probes startup/liveness/readiness \\
+\hline
+\texttt{postgresql.yaml} & Deployment PostgreSQL + PVC 2\,Gi (gp3) + Service ClusterIP \\
+\hline
+\texttt{configmap.yaml} & Configuration non sensible (OpenStack, K8s, collecteur, seuils, SMTP, Grafana, remédiation, soft quota) \\
+\hline
+\texttt{secrets.yaml} & Secrets (DATABASE\_URL, SECRET\_KEY, mots de passe, tokens) \\
+\hline
+\texttt{stress-test.yaml} & Deployment de test de charge pour démonstration de l'auto-guérison IA \\
+\hline
+\end{tabular}
+\caption{Manifestes de déploiement OpenShift}
+\end{table}
+
+Le Deployment applicatif est configuré avec une stratégie \texttt{RollingUpdate}
+(sans indisponibilité), des limites de ressources (256\,Mi – 1\,Gi RAM,
+100m – 1000m CPU) et des sondes de santé HTTP interrogeant
+\texttt{/api/health}.
+
+\subsection{Pipeline CI/CD GitHub Actions}
+
+Un pipeline d'intégration et de déploiement continu est mis en place via
+GitHub Actions (\texttt{.github/workflows/deploy.yaml}). Il s'exécute
+automatiquement à chaque push sur la branche \texttt{main} :
+
+\begin{enumerate}[leftmargin=1.5cm, labelsep=0.3cm, itemsep=0.2em]
+    \item \textbf{Build \& Push} : construction de l'image Docker via Buildx
+    avec cache GitHub Actions, puis publication vers le GitHub Container
+    Registry (\texttt{ghcr.io/toujgani/cloud-ai-monitor}) avec les tags
+    \texttt{:latest} et \texttt{:sha} ;
+    \item \textbf{Deploy to OpenShift} : authentification via \texttt{oc login},
+    déploiement de PostgreSQL si absent, application des ConfigMaps et
+    Secrets, mise à jour de l'image dans le Deployment, attente du rollout,
+    affichage de l'URL de la Route.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{cicd_pipeline.png}
+\caption{Pipeline CI/CD — du push Git au déploiement OpenShift}
+\label{fig:cicd-pipeline}
+\end{figure}
+
+\section{Difficultés rencontrées}
+
+\subsection{Connectivité réseau entre l'hôte et la VM OpenStack}
+
+Le déploiement d'OpenStack via Packstack au sein d'une VM VirtualBox sous
+Rocky Linux a soulevé des difficultés de configuration réseau : le mode NAT
+par défaut de VirtualBox empêchait l'hôte Windows d'accéder directement aux
+services exposés par OpenStack au sein de la VM. La résolution de ce point
+passe par la mise en place d'un mode réseau adapté (NAT avec redirection de
+ports, ou réseau en mode pont/host-only) afin de permettre au backend
+FastAPI, exécuté sur l'hôte, d'interroger les API OpenStack.
+
+\subsection{Permissions au niveau des namespaces OpenShift}
+
+La connexion au OpenShift Developer Sandbox s'est heurtée à des erreurs
+d'autorisation limitées au périmètre des namespaces attribués au compte de
+test, le Sandbox restreignant volontairement les droits à un espace de noms
+dédié. Cette contrainte a nécessité d'adapter le collecteur OpenShift pour
+qu'il cible explicitement les namespaces autorisés plutôt que d'interroger
+l'ensemble du cluster.
+
+\subsection{Cohérence entre données simulées et données réelles}
+
+Le développement du frontend en parallèle de la mise en place de
+l'infrastructure a nécessité de maintenir des données de démonstration
+structurellement proches des données réelles retournées par OpenStack,
+OpenShift et Grafana. Cette approche a permis de tester l'interface, les
+graphiques, les rapports et les scénarios d'alerte même lorsque les
+environnements externes n'étaient pas disponibles.
+
+\subsection{Sécurisation complète de l'accès applicatif}
+
+La version actuelle dispose d'une séparation des rôles côté interface, mais le
+contrôle d'accès doit encore être renforcé côté backend. L'ajout d'une
+authentification JWT serveur, d'un stockage sécurisé des utilisateurs et d'un
+contrôle RBAC sur les endpoints sensibles constitue une difficulté restante et
+une priorité d'industrialisation.
+
+\section{Tests réalisés}
+
+\subsection{Tests fonctionnels sur données simulées}
+
+Une première campagne de tests fonctionnels a été menée sur le
+mode mock, afin de valider le comportement de bout en bout de la chaîne
+applicative avant et pendant le raccordement aux environnements réels. Ces
+tests ont couvert l'affichage du tableau de bord, la consultation des VMs et
+pods, les historiques de métriques, la création d'alertes, l'acquittement, la
+résolution, la relance de l'analyse IA et la remédiation en mode dry-run.
+
+\subsection{Vérification de la séparation des rôles}
+
+Des scénarios de test dédiés ont permis de vérifier que la navigation
+frontend respecte les rôles définis : administrateur, opérateur et viewer. Le
+viewer dispose d'une vue de consultation, tandis que l'opérateur est orienté
+vers le traitement des alertes. La sécurisation équivalente côté API reste à
+finaliser pour garantir une protection complète.
+
+\subsection{Tests des agents IA et AIOps}
+
+Les agents ont été testés sur plusieurs scénarios représentatifs : saturation
+CPU, saturation RAM, VM en erreur, pod en échec, redémarrages répétés et
+action de remédiation bloquée par garde-fou. Les tests ont permis de vérifier
+le calcul du score IA, la production de recommandations, la construction d'un
+plan AIOps et l'enregistrement du statut de remédiation dans l'alerte.
+
+\subsection{Tests des rapports et de l'observabilité}
+
+Les endpoints de rapports ont été validés sur les résumés périodiques et les
+exports CSV. Les endpoints Grafana ont été testés avec deux comportements :
+retour de données réelles lorsque les datasources sont configurées, et retour
+de données de démonstration lorsque Grafana n'est pas disponible.
+
+\section{Perspectives de validation et d'évolution}
+
+La validation et les évolutions prévues portent notamment sur :
+
+\begin{itemize}[label=\textbullet, leftmargin=1.5cm, labelsep=0.5cm,
+                itemsep=0.2em, parsep=0em, topsep=0.2em]
+    \item La cohérence entre l'état réel des ressources Cloud et l'état
+    restitué par le tableau de bord ;
+    \item La pertinence des scores et recommandations de l'agent IA face à des
+    scénarios de charge et de panne variés ;
+    \item La robustesse du système face à une indisponibilité temporaire de
+    l'une des sources (OpenStack ou OpenShift) ;
+    \item Un test de charge visant à mesurer le débit et le temps de réponse
+    de l'API sous une charge simultanée représentative de l'usage prévu par
+    les équipes d'exploitation ;
+    \item L'ajout de tests automatisés backend (pytest) et frontend (Vitest) ;
+    \item L'amélioration du moteur IA avec des modèles supervisés entraînés
+    sur l'historique réel ;
+    \item L'amélioration de l'observabilité interne de la plateforme
+    elle-même ;
+    \item L'extension vers des connecteurs multi-cloud (AWS, Azure, GCP).
+\end{itemize}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a présenté l'état d'avancement de la réalisation de Cloud AI
+Monitor : API REST, base de données, collecteur, moteur d'alertes, agent IA,
+agent AIOps, rapports, observabilité et interface React. Les fonctionnalités
+ajoutées lors de cette phase incluent l'authentification JWT complète avec
+RBAC serveur, la console d'administration, la diffusion temps réel par
+WebSocket, le module de prédiction, l'analyse des coûts, le système de
+quotas logiciels, le simulateur AIOps avec ingénierie du chaos, le journal
+d'audit, la découverte complète de l'environnement OpenStack, les
+notifications email et la conteneurisation avec déploiement CI/CD sur
+OpenShift. Les difficultés rencontrées concernent principalement la
+connectivité réseau, les permissions OpenShift et la cohérence des données de
+démonstration. La suite du projet portera sur l'amélioration du moteur IA
+avec des modèles supervisés, l'extension multi-cloud et les tests automatisés.
+
+% =========================================================
+% CONCLUSION GÉNÉRALE ET PERSPECTIVES
+% =========================================================
+
+\chapter*{Conclusion générale et perspectives}
+\addcontentsline{toc}{chapter}{Conclusion générale et perspectives}
+
+\section*{Résumé du travail réalisé}
+
+Ce stage defin d'année, réalisé au sein de CIRES Technologies, filiale
+technologique du Groupe Tanger Med, avait pour objectif la conception et le
+développement de \textbf{Cloud AI Monitor (CloudWatch)}, une plateforme de
+supervision Cloud unifiée intégrant des capacités d'intelligence
+artificielle.
+
+Le travail accompli couvre :
+
+\begin{itemize}
+  \item La conception d'une architecture modulaire séparant collecte,
+    traitement, intelligence et présentation ;
+  \item Le développement d'un backend FastAPI avec modèle de données
+    SQLAlchemy/PostgreSQL, collecteur APScheduler et API REST structurée ;
+  \item L'intégration de connecteurs OpenStack et OpenShift/Kubernetes avec
+    un mode mock permettant les tests et les démonstrations ;
+  \item La conception d'un moteur d'alertes et d'un agent IA de décision NOC
+    produisant score, catégorie, recommandation et niveau de confiance ;
+  \item Le développement d'un agent AIOps capable de construire des plans de
+    remédiation, de fonctionner en dry-run et d'appliquer des actions
+    contrôlées sous garde-fous ;
+  \item L'ajout de modules de rapports, d'exports CSV, de visualisations
+    Grafana, de logs et de traces ;
+  \item Le développement d'un frontend React/TypeScript/Vite proposant trois
+    espaces de travail (administrateur, opérateur, observateur) reprenant
+    l'identité visuelle de CIRES Technologies ;
+  \item La mise en place d'une infrastructure de test OpenStack (Packstack
+    sur Rocky Linux) et la connexion à l'OpenShift Developer Sandbox ;
+  \item L'implémentation d'une authentification JWT complète avec hachage
+    bcrypt, verrouillage des comptes, suivi des sessions et contrôle RBAC
+    côté serveur ;
+  \item Le développement d'une console d'administration avec gestion
+    complète des utilisateurs, des rôles et des sessions ;
+  \item La mise en place d'une diffusion temps réel par WebSocket (snapshot
+    toutes les 3 secondes) ;
+  \item Le développement d'un module de prédiction par régression linéaire
+    estimant le temps avant saturation ;
+  \item L'implémentation d'un module d'analyse des coûts d'infrastructure
+    avec calcul de ROI et projections financières ;
+  \item La mise en place d'un système de quotas logiciels avec alertes
+    multi-niveaux et remédiation automatique ;
+  \item Le développement d'un simulateur AIOps interactif avec injection
+    d'anomalies et ingénierie du chaos ;
+  \item L'implémentation d'un journal d'audit complet traçant toutes les
+    actions sensibles ;
+  \item La conteneurisation multi-étape (Docker) et le déploiement sur
+    OpenShift via un pipeline CI/CD GitHub Actions automatisé ;
+  \item L'intégration d'un pipeline de notifications email SMTP avec rapports
+    d'incident structurés et retry automatique.
+\end{itemize}
+
+\section*{Compétences acquises}
+
+\begin{itemize}
+  \item Développement backend asynchrone avec FastAPI et SQLAlchemy ;
+  \item Compréhension approfondie des architectures Cloud IaaS (OpenStack)
+    et PaaS (OpenShift/Kubernetes) ;
+  \item Mise en place et administration d'une infrastructure OpenStack via
+    Packstack ;
+  \item Résolution de problématiques réseau (NAT, VirtualBox) et de gestion
+    des droits d'accès (RBAC OpenShift) ;
+  \item Intégration d'API d'observabilité et exploitation de données Grafana ;
+  \item Conception de mécanismes AIOps avec garde-fous opérationnels ;
+  \item Développement frontend moderne avec React et TypeScript, incluant la
+    gestion d'espaces de travail différenciés par rôle ;
+  \item Mise en place d'un système d'authentification JWT complet avec
+    hachage bcrypt et gestion des sessions ;
+  \item Conception et implémentation d'un pipeline CI/CD avec GitHub Actions,
+    Docker et déploiement automatisé sur OpenShift ;
+  \item Développement d'un module de prédiction par régression linéaire
+    appliquée aux séries temporelles de métriques ;
+  \item Mise en place d'une communication temps réel par WebSocket ;
+  \item Conception d'un modèle de coûts d'infrastructure et de calcul de ROI ;
+  \item Approche méthodique de conception logicielle (analyse des besoins,
+    architecture, modélisation, planification, validation) dans un contexte
+    d'entreprise.
+\end{itemize}
+
+\section*{Perspectives}
+
+\begin{itemize}
+  \item \textbf{IA avancée} : entraînement d'un modèle supervisé sur
+    l'historique réel des métriques et logs, détection d'anomalies
+    contextuelles et corrélation multi-sources à l'aide de réseaux LSTM ou
+    Transformers ;
+  \item \textbf{Tests automatisés complets} : mise en place de tests
+    unitaires (pytest), tests d'intégration API, tests frontend (Vitest) et
+    scénarios de non-régression dans le pipeline CI/CD ;
+  \item \textbf{Notifications avancées} : extension vers SMS, Microsoft
+    Teams, Slack ou outils ITSM (ServiceNow, Jira Service Management) ;
+  \item \textbf{Haute disponibilité} : séparation des collecteurs en workers
+    distribués, file de messages (Redis/RabbitMQ), réplication PostgreSQL et
+    supervision de la plateforme elle-même ;
+  \item \textbf{Extension multi-cloud} : ajout de connecteurs AWS
+    CloudWatch, Azure Monitor et GCP Cloud Monitoring pour couvrir des
+    environnements hybrides plus larges ;
+  \item \textbf{Tableau de bord exécutif} : vue de synthèse destinée à la
+    direction avec indicateurs SLA, tendances long terme et rapports
+    automatiques planifiés ;
+  \item \textbf{Intégration Prometheus native} : collecte directe depuis
+    les métriques Prometheus pour les environnements n'utilisant pas Grafana ;
+  \item \textbf{Application mobile} : développement d'une application
+    compagnon React Native pour la réception des alertes critiques en
+    situation de mobilité.
+\end{itemize}
+
+\bigskip
+
+En conclusion, le projet Cloud AI Monitor illustre concrètement comment des
+technologies modernes de Cloud Computing, de développement backend/frontend
+et d'intelligence artificielle peuvent être combinées pour répondre à un
+besoin opérationnel réel au sein d'un opérateur d'infrastructures critiques.
+Ce travail constitue une base solide et documentée sur laquelle les équipes
+de CIRES Technologies pourront s'appuyer pour poursuivre le développement de
+la plateforme.
+
+% =============================================================
+%  BIBLIOGRAPHIE
+% =============================================================
+
+\addcontentsline{toc}{chapter}{Bibliographie}
+
+\normalsize\setstretch{1.2}\setlength{\parskip}{4pt}
+
+\makeatletter
+\renewcommand{\@biblabel}[1]{\textbullet}
+\makeatother
+
+\begin{thebibliography}{99}
+
+\bibitem{fastapi}
+Ramírez, S.
+\textit{FastAPI — High Performance, Easy to Learn, Fast to Code, Ready for Production}.
+2024.
+\url{https://fastapi.tiangolo.com}
+
+\bibitem{uvicorn}
+Encode OSS.
+\textit{Uvicorn — An ASGI Web Server Implementation for Python}.
+2024.
+\url{https://www.uvicorn.org}
+
+\bibitem{sqlalchemy}
+Bayer, M.
+\textit{SQLAlchemy — The Python SQL Toolkit and Object Relational Mapper}.
+2024.
+\url{https://docs.sqlalchemy.org}
+
+\bibitem{alembic}
+Bayer, M.
+\textit{Alembic — Database Migration Tool for SQLAlchemy}.
+2024.
+\url{https://alembic.sqlalchemy.org}
+
+\bibitem{postgresql}
+PostgreSQL Global Development Group.
+\textit{PostgreSQL — The World's Most Advanced Open Source Relational Database}.
+2024.
+\url{https://www.postgresql.org/docs}
+
+\bibitem{apscheduler}
+Grönholm, A.
+\textit{APScheduler — Advanced Python Scheduler}.
+2024.
+\url{https://apscheduler.readthedocs.io}
+
+\bibitem{pyjose}
+PyPI Contributors.
+\textit{python-jose — JavaScript Object Signing and Encryption for Python}.
+2024.
+\url{https://python-jose.readthedocs.io}
+
+\bibitem{openstack}
+OpenStack Foundation.
+\textit{OpenStack Documentation}.
+2024.
+\url{https://docs.openstack.org}
+
+\bibitem{packstack}
+OpenStack Foundation.
+\textit{Packstack — Puppet-based OpenStack Installer}.
+2024.
+\url{https://www.rdoproject.org/install/packstack}
+
+\bibitem{rockylinux}
+Rocky Enterprise Software Foundation.
+\textit{Rocky Linux Documentation}.
+2024.
+\url{https://docs.rockylinux.org}
+
+\bibitem{openshift}
+Red Hat.
+\textit{OpenShift Container Platform Documentation}.
+2024.
+\url{https://docs.openshift.com}
+
+\bibitem{kubernetes}
+Cloud Native Computing Foundation.
+\textit{Kubernetes Documentation}.
+2024.
+\url{https://kubernetes.io/docs}
+
+\bibitem{react}
+Meta Open Source.
+\textit{React — A JavaScript Library for Building User Interfaces}.
+2024.
+\url{https://react.dev}
+
+\bibitem{vite}
+Evan You \& contributeurs.
+\textit{Vite — Next Generation Frontend Tooling}.
+2024.
+\url{https://vitejs.dev}
+
+\bibitem{typescript}
+Microsoft.
+\textit{TypeScript — JavaScript With Syntax For Types}.
+2024.
+\url{https://www.typescriptlang.org/docs}
+
+\bibitem{prometheus}
+Prometheus Authors.
+\textit{Prometheus — An Open-Source Monitoring System with a Dimensional Data Model}.
+2024.
+\url{https://prometheus.io/docs}
+
+\bibitem{grafana}
+Grafana Labs.
+\textit{Grafana Documentation}.
+2024.
+\url{https://grafana.com/docs}
+
+\bibitem{zabbix}
+Zabbix SIA.
+\textit{Zabbix Documentation}.
+2024.
+\url{https://www.zabbix.com/documentation}
+
+\bibitem{tangermed}
+Groupe Tanger Med.
+\textit{Site institutionnel du Groupe Tanger Med}.
+2024.
+\url{https://www.tangermed.ma}
+
+\bibitem{cires}
+CIRES Technologies.
+\textit{Site institutionnel de CIRES Technologies}.
+2024.
+\url{https://www.cirestechnologies.com}
+
+\bibitem{passlib}
+Python Community.
+\textit{Passlib — Password Hashing Framework for Python}.
+2024.
+\url{https://passlib.readthedocs.io}
+
+\bibitem{paramiko}
+Paramiko Contributors.
+\textit{Paramiko — SSH2 Protocol Library for Python}.
+2024.
+\url{https://www.paramiko.org}
+
+\bibitem{githubactions}
+GitHub.
+\textit{GitHub Actions Documentation}.
+2024.
+\url{https://docs.github.com/en/actions}
+
+\bibitem{docker}
+Docker Inc.
+\textit{Docker Documentation — Build, Ship, and Run Any App, Anywhere}.
+2024.
+\url{https://docs.docker.com}
+
+\bibitem{recharts}
+Recharts Contributors.
+\textit{Recharts — A Composable Charting Library Built on React}.
+2024.
+\url{https://recharts.org}
+
+\bibitem{stressng}
+King, C.
+\textit{stress-ng — A Tool to Load and Stress a Computer System}.
+2024.
+\url{https://github.com/ColinIanKing/stress-ng}
+
+\end{thebibliography}
+
+\end{document}

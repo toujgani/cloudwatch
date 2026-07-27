@@ -25,9 +25,9 @@ data:
   COLLECT_INTERVAL_SECONDS: "30"
 
   # Mock mode (true = fake data for demos)
-  MOCK_OPENSTACK: "true"
+  MOCK_OPENSTACK: "false"
   MOCK_OPENSHIFT: "false"
-  MOCK_KUBERNETES: "true"
+  MOCK_KUBERNETES: "false"
 
   # Alert thresholds
   ALERT_CPU_WARNING: "70"
