@@ -101,17 +101,23 @@ export default function App() {
   }
 
   const logout = () => {
-    // Mark session as inactive on the server
     const token = getStoredToken()
     if (token) {
       fetch('/api/auth/logout', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {}) // fire-and-forget
+      }).catch(() => {})
     }
     clearStoredToken()
     localStorage.removeItem(STORAGE_KEY)
     setUser(null)
+  }
+
+  const switchRole = (role: UserRole) => {
+    if (!user || user.baseRole !== 'admin') return
+    const nextUser: AuthUser = { ...user, role }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
   }
 
   if (!user) {
@@ -121,7 +127,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-        <Sidebar user={user} onLogout={logout} />
+        <Sidebar user={user} onLogout={logout} onSwitchRole={switchRole} />
         <main style={{ marginLeft: 220, flex: 1 }}>
           <div style={{
             height: 60,

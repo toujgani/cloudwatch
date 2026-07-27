@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import type { AuthUser } from '../types'
+import type { AuthUser, UserRole } from '../types'
 
 const links = [
   { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'operator', 'viewer'] },
@@ -15,12 +15,20 @@ const links = [
   { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin'] },
 ]
 
+const viewModes: { role: UserRole; label: string }[] = [
+  { role: 'admin', label: 'Admin' },
+  { role: 'operator', label: 'Operateur' },
+  { role: 'viewer', label: 'Viewer' },
+]
+
 export default function Sidebar({
   user,
   onLogout,
+  onSwitchRole,
 }: {
   user: AuthUser
   onLogout: () => void
+  onSwitchRole: (role: UserRole) => void
 }) {
   const visibleLinks = links.filter(link => link.roles.includes(user.role))
 
@@ -37,12 +45,8 @@ export default function Sidebar({
             src="/cireslogo.png"
             alt="CIRES"
             style={{
-              width: 42,
-              height: 42,
-              objectFit: 'contain',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              padding: 4,
+              width: 42, height: 42, objectFit: 'contain',
+              borderRadius: 8, border: '1px solid var(--border)', padding: 4,
             }}
           />
           <div>
@@ -68,15 +72,9 @@ export default function Sidebar({
             })}
           >
             <span style={{
-              fontSize: 10,
-              width: 26,
-              height: 22,
-              borderRadius: 5,
-              background: 'var(--bg3)',
-              color: 'var(--text2)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontSize: 10, width: 26, height: 22, borderRadius: 5,
+              background: 'var(--bg3)', color: 'var(--text2)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 800,
             }}>{l.icon}</span>
             {l.label}
@@ -85,6 +83,25 @@ export default function Sidebar({
       </nav>
 
       <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+        {user.baseRole === 'admin' && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
+              Vue
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {viewModes.map(mode => (
+                <button
+                  key={mode.role}
+                  className={user.role === mode.role ? 'btn btn-primary' : 'btn'}
+                  onClick={() => onSwitchRole(mode.role)}
+                  style={{ flex: 1, fontSize: 10, padding: '5px 4px', minHeight: 26 }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <button className="btn" onClick={onLogout} style={{ width: '100%', marginBottom: 10 }}>
           Deconnexion
         </button>

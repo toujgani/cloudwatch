@@ -40,20 +40,24 @@ services:
       # Security
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-random-32-chars}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
-      # OpenStack (configure via .env file)      OS_AUTH_URL: ${OS_AUTH_URL:-}
+      # OpenStack
+      OS_AUTH_URL: ${OS_AUTH_URL:-}
       OS_USERNAME: ${OS_USERNAME:-}
       OS_PASSWORD: ${OS_PASSWORD:-}
       OS_PROJECT_NAME: ${OS_PROJECT_NAME:-}
       OS_USER_DOMAIN_NAME: ${OS_USER_DOMAIN_NAME:-Default}
       OS_PROJECT_DOMAIN_NAME: ${OS_PROJECT_DOMAIN_NAME:-Default}
-      # OpenShift (configure via .env file)
+      # OpenShift
       KUBE_API_URL: ${KUBE_API_URL:-}
       KUBE_TOKEN: ${KUBE_TOKEN:-}
       KUBE_VERIFY_SSL: ${KUBE_VERIFY_SSL:-false}
       KUBE_NAMESPACE: ${KUBE_NAMESPACE:-}
-      # Grafana (configure via .env file)
+      # Grafana
       GRAFANA_URL: ${GRAFANA_URL:-}
       GRAFANA_API_TOKEN: ${GRAFANA_API_TOKEN:-}
+      GRAFANA_METRICS_DATASOURCE_UID: ${GRAFANA_METRICS_DATASOURCE_UID:-}
+      GRAFANA_LOGS_DATASOURCE_UID: ${GRAFANA_LOGS_DATASOURCE_UID:-}
+      GRAFANA_TRACES_DATASOURCE_UID: ${GRAFANA_TRACES_DATASOURCE_UID:-}
       # Email (configure via .env file)
       EMAIL_ALERTS_ENABLED: ${EMAIL_ALERTS_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
