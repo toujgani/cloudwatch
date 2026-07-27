@@ -1,35 +1,26 @@
 import { NavLink } from 'react-router-dom'
-import type { AuthUser, UserRole } from '../types'
+import type { AuthUser } from '../types'
 
 const links = [
-  { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'subadmin', 'viewer'] },
-  { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin', 'subadmin'] },
-  { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin', 'subadmin'] },
-  { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'subadmin', 'operator'] },
-  { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin', 'subadmin'] },
-  { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'subadmin', 'viewer'] },
-  { to: '/costs', icon: 'FIN', label: 'Couts & ROI', roles: ['admin', 'subadmin', 'viewer'] },
-  { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin', 'subadmin'] },
-  { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin', 'subadmin'] },
-  { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin', 'subadmin'] },
+  { to: '/', icon: 'DB', label: 'Dashboard', roles: ['admin', 'operator', 'viewer'] },
+  { to: '/infrastructure', icon: 'MAP', label: 'Vue infrastructure', roles: ['admin', 'operator'] },
+  { to: '/vms', icon: 'VM', label: 'Machines Virtuelles', roles: ['admin', 'operator'] },
+  { to: '/alerts', icon: 'AL', label: 'Alertes', roles: ['admin', 'operator'] },
+  { to: '/logs', icon: 'LOG', label: 'Logs', roles: ['admin', 'operator'] },
+  { to: '/reports', icon: 'CSV', label: 'Rapports', roles: ['admin', 'operator', 'viewer'] },
+  { to: '/costs', icon: 'FIN', label: 'Couts & ROI', roles: ['admin', 'operator', 'viewer'] },
+  { to: '/kubernetes', icon: 'K8S', label: 'Clusters Kubernetes', roles: ['admin', 'operator'] },
+  { to: '/pods', icon: 'OS', label: 'Pods OpenShift', roles: ['admin', 'operator'] },
+  { to: '/aiops', icon: 'AI', label: 'AIOps Engine', roles: ['admin', 'operator'] },
   { to: '/admin', icon: 'ADM', label: 'Administration', roles: ['admin'] },
-]
-
-const adminModes: { role: UserRole; label: string }[] = [
-  { role: 'admin', label: 'Admin' },
-  { role: 'subadmin', label: 'Sub-Admin' },
-  { role: 'operator', label: 'Operateur' },
-  { role: 'viewer', label: 'Viewer' },
 ]
 
 export default function Sidebar({
   user,
   onLogout,
-  onSwitchRole,
 }: {
   user: AuthUser
   onLogout: () => void
-  onSwitchRole: (role: UserRole) => void
 }) {
   const visibleLinks = links.filter(link => link.roles.includes(user.role))
 
@@ -94,25 +85,6 @@ export default function Sidebar({
       </nav>
 
       <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-        {user.baseRole === 'admin' && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
-              Mode d'acces
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
-              {adminModes.map(mode => (
-                <button
-                  key={mode.role}
-                  className={user.role === mode.role ? 'btn btn-primary' : 'btn'}
-                  onClick={() => onSwitchRole(mode.role)}
-                  style={{ width: '100%', minHeight: 28 }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         <button className="btn" onClick={onLogout} style={{ width: '100%', marginBottom: 10 }}>
           Deconnexion
         </button>

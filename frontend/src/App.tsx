@@ -16,30 +16,30 @@ import AIOpsPage from './components/AIOpsPage'
 import CostPage from './components/CostPage'
 import AdminPage from './components/AdminPage'
 import { clearStoredToken, getStoredToken } from './api/client'
-import type { AuthUser, UserRole, WsSnapshot } from './types'
+import type { AuthUser, WsSnapshot } from './types'
+import type { UserRole } from './types'
 import './index.css'
 
 const STORAGE_KEY = 'cloudwatch-auth-user'
 
 const homeByRole: Record<UserRole, string> = {
   admin: '/',
-  subadmin: '/',
   operator: '/alerts',
   viewer: '/',
 }
 
 const routeRoles: Record<string, UserRole[]> = {
-  '/': ['admin', 'subadmin', 'viewer'],
-  '/infrastructure': ['admin', 'subadmin'],
-  '/vms': ['admin', 'subadmin'],
-  '/pods': ['admin', 'subadmin'],
-  '/alerts': ['admin', 'subadmin', 'operator'],
-  '/logs': ['admin', 'subadmin'],
-  '/grafana': ['admin', 'subadmin', 'viewer'],
-  '/reports': ['admin', 'subadmin', 'viewer'],
-  '/costs': ['admin', 'subadmin', 'viewer'],
-  '/kubernetes': ['admin', 'subadmin'],
-  '/aiops': ['admin', 'subadmin'],
+  '/': ['admin', 'operator', 'viewer'],
+  '/infrastructure': ['admin', 'operator'],
+  '/vms': ['admin', 'operator'],
+  '/pods': ['admin', 'operator'],
+  '/alerts': ['admin', 'operator'],
+  '/logs': ['admin', 'operator'],
+  '/grafana': ['admin', 'operator', 'viewer'],
+  '/reports': ['admin', 'operator', 'viewer'],
+  '/costs': ['admin', 'operator', 'viewer'],
+  '/kubernetes': ['admin', 'operator'],
+  '/aiops': ['admin', 'operator'],
   '/admin': ['admin'],
 }
 
@@ -49,7 +49,7 @@ function readStoredUser(): AuthUser | null {
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as AuthUser
-    if (!parsed.name || !['admin', 'subadmin', 'operator', 'viewer'].includes(parsed.role)) return null
+    if (!parsed.name || !['admin', 'operator', 'viewer'].includes(parsed.role)) return null
 
     return {
       ...parsed,
@@ -114,14 +114,6 @@ export default function App() {
     setUser(null)
   }
 
-  const switchRole = (role: UserRole) => {
-    if (!user || user.baseRole !== 'admin') return
-
-    const nextUser: AuthUser = { ...user, role }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
-    setUser(nextUser)
-  }
-
   if (!user) {
     return <LoginPage onLogin={login} />
   }
@@ -129,7 +121,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-        <Sidebar user={user} onLogout={logout} onSwitchRole={switchRole} />
+        <Sidebar user={user} onLogout={logout} />
         <main style={{ marginLeft: 220, flex: 1 }}>
           <div style={{
             height: 60,

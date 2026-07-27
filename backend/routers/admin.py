@@ -91,9 +91,9 @@ def list_users(admin: User = Depends(_require_admin), db: Session = Depends(get_
 
 @router.post("/users")
 def create_user(payload: CreateUserIn, admin: User = Depends(_require_admin), db: Session = Depends(get_db)):
-    """Create a new user account. Only admin can create users (not subadmin)."""
+    """Create a new user account. Only admin can create users."""
     # Validate role
-    valid_roles = ["viewer", "operator", "subadmin"]
+    valid_roles = ["viewer", "operator"]
     if payload.role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"Invalid role. Options: {valid_roles}")
 
@@ -241,8 +241,8 @@ def change_user_role(user_id: int, payload: ChangeRoleIn, admin: User = Depends(
         raise HTTPException(status_code=400, detail="Cannot change the primary admin role.")
     if payload.role == "admin":
         raise HTTPException(status_code=400, detail="Only one admin account is allowed.")
-    if payload.role not in ("subadmin", "operator", "viewer"):
-        raise HTTPException(status_code=400, detail="Invalid role. Options: subadmin, operator, viewer.")
+    if payload.role not in ("operator", "viewer"):
+        raise HTTPException(status_code=400, detail="Invalid role. Options: operator, viewer.")
 
     old_role = user.role.value
     user.role = RoleEnum(payload.role)

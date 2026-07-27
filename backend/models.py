@@ -175,7 +175,6 @@ class AuditLog(Base):
 
 class RoleEnum(str, enum.Enum):
     admin = "admin"
-    subadmin = "subadmin"
     operator = "operator"
     viewer = "viewer"
 

@@ -161,7 +161,6 @@ export default function AdminPage() {
                     ) : (
                       <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
                         style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg3)', color: 'var(--text)', fontWeight: 600 }}>
-                        <option value="subadmin">Sub-Admin</option>
                         <option value="operator">Operateur</option>
                         <option value="viewer">Viewer</option>
                       </select>
