@@ -1,0 +1,83 @@
+# Cloud AI Monitor — Production Deployment (pre-built image)
+# Usage:
+#   1. Load the image:  podman load -i cloud-ai-monitor.tar
+#   2. Copy .env.production to .env
+#   3. Run:  podman-compose -f docker-compose.production.yaml up -d
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloudwatch-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cloudwatch}
+      POSTGRES_USER: ${POSTGRES_USER:-cloudwatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CloudW4tch2026!Secure}
+    expose:
+      - "5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloudwatch}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    image: cloud-ai-monitor:latest
+    container_name: cloudwatch-app
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cloudwatch:CloudW4tch2026!Secure@postgres:5432/cloudwatch}
+      COLLECT_INTERVAL_SECONDS: ${COLLECT_INTERVAL_SECONDS:-30}
+      SECRET_KEY: ${SECRET_KEY:-c9m4x7pRqT2vB8nL5wK1jF6hA3dY0sG4eU9iZoX2bN7mQ8rW1tV4pJ6kD5fH9a}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      OS_AUTH_URL: ${OS_AUTH_URL:-}
+      OS_USERNAME: ${OS_USERNAME:-}
+      OS_PASSWORD: ${OS_PASSWORD:-}
+      OS_PROJECT_NAME: ${OS_PROJECT_NAME:-}
+      OS_USER_DOMAIN_NAME: ${OS_USER_DOMAIN_NAME:-Default}
+      OS_PROJECT_DOMAIN_NAME: ${OS_PROJECT_DOMAIN_NAME:-Default}
+      KUBE_API_URL: ${KUBE_API_URL:-}
+      KUBE_TOKEN: ${KUBE_TOKEN:-}
+      KUBE_VERIFY_SSL: ${KUBE_VERIFY_SSL:-false}
+      KUBE_NAMESPACE: ${KUBE_NAMESPACE:-}
+      GRAFANA_URL: ${GRAFANA_URL:-}
+      GRAFANA_API_TOKEN: ${GRAFANA_API_TOKEN:-}
+      GRAFANA_METRICS_DATASOURCE_UID: ${GRAFANA_METRICS_DATASOURCE_UID:-}
+      GRAFANA_LOGS_DATASOURCE_UID: ${GRAFANA_LOGS_DATASOURCE_UID:-}
+      GRAFANA_TRACES_DATASOURCE_UID: ${GRAFANA_TRACES_DATASOURCE_UID:-}
+      EMAIL_ALERTS_ENABLED: ${EMAIL_ALERTS_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      AUTO_REMEDIATION_ENABLED: ${AUTO_REMEDIATION_ENABLED:-true}
+      AUTO_REMEDIATION_DRY_RUN: ${AUTO_REMEDIATION_DRY_RUN:-true}
+      AUTO_REMEDIATION_MIN_SCORE: ${AUTO_REMEDIATION_MIN_SCORE:-55}
+      REMEDIATION_MAX_ACTIONS_PER_HOUR: ${REMEDIATION_MAX_ACTIONS_PER_HOUR:-5}
+      REMEDIATION_STORAGE_INCREMENT_GB: ${REMEDIATION_STORAGE_INCREMENT_GB:-20}
+      REMEDIATION_MEMORY_SCALE_PERCENT: ${REMEDIATION_MEMORY_SCALE_PERCENT:-25}
+      MOCK_OPENSTACK: ${MOCK_OPENSTACK:-false}
+      MOCK_OPENSHIFT: ${MOCK_OPENSHIFT:-false}
+      ALERT_CPU_WARNING: ${ALERT_CPU_WARNING:-70}
+      ALERT_CPU_CRITICAL: ${ALERT_CPU_CRITICAL:-90}
+      ALERT_RAM_WARNING: ${ALERT_RAM_WARNING:-75}
+      ALERT_RAM_CRITICAL: ${ALERT_RAM_CRITICAL:-90}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      SEED_PASSWORD_ADMIN: ${SEED_PASSWORD_ADMIN:-Admin@CloudAI2026}
+      SEED_PASSWORD_OPERATOR: ${SEED_PASSWORD_OPERATOR:-Operator@CloudAI2026}
+      SEED_PASSWORD_VIEWER: ${SEED_PASSWORD_VIEWER:-Viewer@CloudAI2026}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
