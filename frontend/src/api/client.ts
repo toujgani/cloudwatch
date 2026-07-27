@@ -5,6 +5,8 @@ const TOKEN_KEY = 'cloudwatch-token'
 
 const api = axios.create({ baseURL: '/api' })
 
+export { api as apiClient }
+
 // ── Token management ─────────────────────────────────────────────────────────
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)

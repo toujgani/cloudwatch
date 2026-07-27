@@ -1,13 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
-import { getStoredToken } from '../api/client'
-
-const api = axios.create({ baseURL: '/api' })
-api.interceptors.request.use((config) => {
-  const token = getStoredToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+import { apiClient as api } from '../api/client'
 
 interface UserEntry {
   id: number
