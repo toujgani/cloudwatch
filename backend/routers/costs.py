@@ -76,7 +76,7 @@ def cost_summary(hours: int = Query(default=720, ge=1, le=87600), db: Session = 
     storage_gb = 0
     try:
         from .. import openshift_client as k8s
-        namespace = settings.KUBE_NAMESPACE or "red1intheocean-dev"
+        namespace = settings.KUBE_NAMESPACE or "default"
         s = k8s._session()
         path = f"/api/v1/namespaces/{namespace}/persistentvolumeclaims"
         resp = s.get(k8s._url(path), timeout=10)

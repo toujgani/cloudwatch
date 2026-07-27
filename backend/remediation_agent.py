@@ -500,8 +500,11 @@ def execute_remediation(db: Session, alert: Alert, operator: str = "AI-Agent", f
         },
     )
 
-    # Send email notification for every remediation action
-    send_remediation_email(alert)
+    # Send email notification (never crash the remediation pipeline)
+    try:
+        send_remediation_email(alert)
+    except Exception:
+        pass
 
     return alert
 

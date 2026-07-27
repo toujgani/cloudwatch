@@ -26,7 +26,34 @@ scheduler = BackgroundScheduler()
 # ─── OpenStack Collect ────────────────────────────────────────────────────────
 
 def collect_openstack(db: Session):
-    """Collect VMs from real OpenStack. If unreachable or unconfigured, skip silently."""
+    """Collect VMs from real OpenStack or mock data if MOCK_OPENSTACK=true."""
+    if settings.MOCK_OPENSTACK:
+        from .mock_data import mock_openstack_vms
+        logger.info("[Collector] OpenStack MOCK MODE — generating fake VMs")
+        vms_data = mock_openstack_vms()
+        for data in vms_data:
+            vm = db.get(VirtualMachine, data["id"])
+            if vm is None:
+                vm = VirtualMachine(id=data["id"])
+                db.add(vm)
+            vm.name = data["name"]
+            vm.status = data["status"]
+            vm.flavor = data["flavor"]
+            vm.host = data["host"]
+            vm.tenant_id = data["tenant_id"]
+            vm.updated_at = datetime.utcnow()
+            metric = VMMetric(
+                vm_id=data["id"], cpu_percent=data["cpu_percent"],
+                ram_percent=data["ram_percent"], ram_used_mb=data["ram_used_mb"],
+                ram_total_mb=data["ram_total_mb"], disk_read_mb=data["disk_read_mb"],
+                disk_write_mb=data["disk_write_mb"], collected_at=datetime.utcnow(),
+            )
+            db.add(metric)
+            alert_engine.evaluate_vm(db, vm, data["cpu_percent"], data["ram_percent"])
+        db.commit()
+        logger.info("[Collector] OpenStack MOCK — done (%d VMs)", len(vms_data))
+        return
+
     if not settings.OS_AUTH_URL:
         return  # OpenStack not configured — skip without logging
     logger.info("[Collector] OpenStack — attempting real connection")
@@ -77,12 +104,36 @@ def collect_openstack(db: Session):
 
 def collect_openshift(db: Session):
     """
-    Collect pods from real OpenShift with FULL RECONCILIATION.
-    - Inserts new pods
-    - Updates existing pods
-    - DELETES pods from database that no longer exist in Kubernetes
-    This ensures the database is always in sync with the live cluster state.
+    Collect pods from real OpenShift or mock data if MOCK_OPENSHIFT=true.
+    Real mode does FULL RECONCILIATION (deletes stale pods from DB).
     """
+    if settings.MOCK_OPENSHIFT:
+        from .mock_data import mock_openshift_pods
+        logger.info("[Collector] OpenShift MOCK MODE — generating fake pods")
+        pods_data = mock_openshift_pods()
+        for data in pods_data:
+            pod = db.get(Pod, data["id"])
+            if pod is None:
+                pod = Pod(id=data["id"])
+                db.add(pod)
+            pod.name = data["name"]
+            pod.namespace = data["namespace"]
+            pod.status = data["status"]
+            pod.node = data["node"]
+            pod.restart_count = data["restart_count"]
+            pod.image = data["image"]
+            pod.updated_at = datetime.utcnow()
+            m = PodMetric(
+                pod_id=data["id"], cpu_millicores=data["cpu_millicores"],
+                ram_mb=data["ram_mb"], restart_count=data["restart_count"],
+                collected_at=datetime.utcnow(),
+            )
+            db.add(m)
+            alert_engine.evaluate_pod(db, pod, data["restart_count"])
+        db.commit()
+        logger.info("[Collector] OpenShift MOCK — done (%d pods)", len(pods_data))
+        return
+
     logger.info("[Collector] OpenShift — attempting real connection")
     try:
         namespace = settings.KUBE_NAMESPACE or ""

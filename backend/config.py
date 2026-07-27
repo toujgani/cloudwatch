@@ -9,18 +9,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     # Database
-    DATABASE_URL: str = "postgresql://cloudwatch:password@localhost:5432/cloudwatch"
+    DATABASE_URL: str = "postgresql://cloudwatch:password@postgres:5432/cloudwatch"
 
     # OpenStack
-    OS_AUTH_URL: str = "http://localhost:5000/v3"
-    OS_USERNAME: str = "admin"
-    OS_PASSWORD: str = "password"
-    OS_PROJECT_NAME: str = "admin"
+    OS_AUTH_URL: str = ""
+    OS_USERNAME: str = ""
+    OS_PASSWORD: str = ""
+    OS_PROJECT_NAME: str = ""
     OS_USER_DOMAIN_NAME: str = "Default"
     OS_PROJECT_DOMAIN_NAME: str = "Default"
 
     # OpenShift / Kubernetes
-    KUBE_API_URL: str = "https://localhost:6443"
+    KUBE_API_URL: str = ""
     KUBE_TOKEN: str = ""
     KUBE_VERIFY_SSL: bool = False
     KUBE_NAMESPACE: str = ""  # if set, only monitor this namespace
@@ -29,8 +29,20 @@ class Settings(BaseSettings):
     COLLECT_INTERVAL_SECONDS: int = 30
 
     # JWT
-    SECRET_KEY: str = "change-me"
+    SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Generate a random key if none provided (dev only — logs warning)
+        if not self.SECRET_KEY:
+            import secrets as _s
+            self.SECRET_KEY = _s.token_hex(32)
+            import logging
+            logging.getLogger(__name__).warning(
+                "[CONFIG] SECRET_KEY not set — generated random key. "
+                "Sessions will not persist across restarts. Set SECRET_KEY in .env for production."
+            )
 
     # Alert thresholds
     ALERT_CPU_WARNING: float = 70.0
@@ -38,18 +50,22 @@ class Settings(BaseSettings):
     ALERT_RAM_WARNING: float = 75.0
     ALERT_RAM_CRITICAL: float = 90.0
 
+    # Mock mode — generate fake data when source is unreachable or for demos
+    MOCK_OPENSTACK: bool = False
+    MOCK_OPENSHIFT: bool = False
+
     # Email notifications
     EMAIL_ALERTS_ENABLED: bool = False
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "cloudwatch@localhost"
+    SMTP_FROM: str = ""
     ALERT_EMAIL_TO: str = ""
     SMTP_USE_TLS: bool = True
 
     # Grafana API
-    GRAFANA_URL: str = "http://localhost:3000"
+    GRAFANA_URL: str = ""
     GRAFANA_API_TOKEN: str = ""
     GRAFANA_METRICS_DATASOURCE_UID: str = ""
     GRAFANA_LOGS_DATASOURCE_UID: str = ""

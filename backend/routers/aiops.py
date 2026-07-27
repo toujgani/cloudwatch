@@ -18,6 +18,7 @@ from ..config import settings
 from ..ai_agent import analyze_alert, AnomalyVector, _KNOWLEDGE_BASE, _LAMBDA
 from ..remediation_agent import build_plan, choose_action
 from .. import audit as audit_trail
+from ..routers.auth import require_auth
 
 router = APIRouter(prefix="/aiops", tags=["AIOps Simulator"])
 
@@ -474,7 +475,7 @@ class StressTestIn(BaseModel):
 
 
 @router.post("/chaos/deploy-stress")
-def deploy_stress_test(payload: StressTestIn):
+def deploy_stress_test(payload: StressTestIn, _user=Depends(require_auth)):
     """
     Deploy a stress-test pod in the namespace.
     This saturates CPU/RAM → triggers AI detection → AI remediates.
@@ -563,7 +564,7 @@ def deploy_stress_test(payload: StressTestIn):
 
 
 @router.delete("/chaos/cleanup")
-def cleanup_stress_test(db: Session = Depends(get_db)):
+def cleanup_stress_test(db: Session = Depends(get_db), _user=Depends(require_auth)):
     """
     Intelligent namespace cleanup.
     Scans live Kubernetes, identifies deletable resources, removes them.
@@ -660,7 +661,7 @@ class VMStressTestIn(BaseModel):
 
 
 @router.post("/chaos/vm-stress")
-def deploy_vm_stress(payload: VMStressTestIn):
+def deploy_vm_stress(payload: VMStressTestIn, _user=Depends(require_auth)):
     """Execute a stress test on an OpenStack VM via SSH."""
     from ..vm_stress import VMStressConfig, execute_stress_test
 
@@ -678,7 +679,7 @@ def deploy_vm_stress(payload: VMStressTestIn):
 
 
 @router.delete("/chaos/vm-stress/{vm_ip}")
-def cleanup_vm_stress(vm_ip: str):
+def cleanup_vm_stress(vm_ip: str, _user=Depends(require_auth)):
     """Kill stress processes on a specific VM."""
     from ..vm_stress import cleanup_stress_test
     return cleanup_stress_test(vm_ip)

@@ -87,11 +87,12 @@ app = FastAPI(
 # GZip compression for responses > 500 bytes
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# CORS — restrictive in production, permissive in development
+# CORS — configured via CORS_ORIGINS env var (comma-separated)
 _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
 _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
 if not _allowed_origins:
-    _allowed_origins = ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]
+    # Allow same-origin only — no explicit origins needed when frontend is served by same server
+    _allowed_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -168,7 +169,8 @@ def health():
 
 @app.get("/api/test-email")
 def test_email():
-    """Send a test email to verify SMTP configuration works."""
+    """Send a test email to verify SMTP configuration. Requires authentication."""
+    from .routers.auth import oauth2_scheme
     from .email_notifications import _send_smtp, email_alerts_configured
     from .config import settings
 
