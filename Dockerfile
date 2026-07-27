@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 EXPOSE 8080
 
 # Production server
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2", "--access-log", "--log-level", "info"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--access-log", "--log-level", "info"]

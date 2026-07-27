@@ -215,15 +215,31 @@ def namespaces():
 
 @router.get("/measurements")
 def measurements(hours: int = Query(default=24, ge=1, le=168)):
-    nodes = _real_nodes()
+    if settings.MOCK_KUBERNETES:
+        mock_nodes = nodes()
+        mock_ns = namespaces()
+        return {
+            "period_hours": hours,
+            "rates": [
+                {"name": "Disponibilite nodes", "value": 100.0, "unit": "%", "target": 99},
+                {"name": "CPU cluster moyen", "value": round(sum(n.get("cpu_usage_percent", 0) or 0 for n in mock_nodes) / max(len(mock_nodes), 1), 1), "unit": "%", "target": 75},
+                {"name": "Memoire cluster moyenne", "value": round(sum(n.get("memory_usage_percent", 0) or 0 for n in mock_nodes) / max(len(mock_nodes), 1), 1), "unit": "%", "target": 80},
+                {"name": "Occupation slots pods", "value": round(sum(n.get("pods_used", 0) for n in mock_nodes) / max(sum(n.get("pods_capacity", 110) for n in mock_nodes), 1) * 100, 1), "unit": "%", "target": 70},
+                {"name": "Namespaces en erreur", "value": 0, "unit": "ns", "target": 0},
+                {"name": "Redemarrages containers", "value": 3, "unit": "restart", "target": 5},
+            ],
+            "by_namespace": mock_ns,
+        }
+
+    nodes_data = _real_nodes()
     namespaces_data = namespaces()
     return {
         "period_hours": hours,
         "rates": [
-            {"name": "Disponibilite nodes", "value": _percent(sum(1 for n in nodes if n["status"] == "Ready"), len(nodes)), "unit": "%", "target": 99},
-            {"name": "CPU cluster moyen", "value": round(sum((n["cpu_usage_percent"] or 0) for n in nodes) / max(len(nodes), 1), 1), "unit": "%", "target": 75},
-            {"name": "Memoire cluster moyenne", "value": round(sum((n["memory_usage_percent"] or 0) for n in nodes) / max(len(nodes), 1), 1), "unit": "%", "target": 80},
-            {"name": "Occupation slots pods", "value": _percent(sum(int(n["pods_used"]) for n in nodes), sum(int(n["pods_capacity"]) for n in nodes)), "unit": "%", "target": 70},
+            {"name": "Disponibilite nodes", "value": _percent(sum(1 for n in nodes_data if n["status"] == "Ready"), len(nodes_data)), "unit": "%", "target": 99},
+            {"name": "CPU cluster moyen", "value": round(sum((n["cpu_usage_percent"] or 0) for n in nodes_data) / max(len(nodes_data), 1), 1), "unit": "%", "target": 75},
+            {"name": "Memoire cluster moyenne", "value": round(sum((n["memory_usage_percent"] or 0) for n in nodes_data) / max(len(nodes_data), 1), 1), "unit": "%", "target": 80},
+            {"name": "Occupation slots pods", "value": _percent(sum(int(n["pods_used"]) for n in nodes_data), sum(int(n["pods_capacity"]) for n in nodes_data)), "unit": "%", "target": 70},
             {"name": "Namespaces en erreur", "value": sum(1 for n in namespaces_data if n["failed"] > 0), "unit": "ns", "target": 0},
             {"name": "Redemarrages containers", "value": sum(int(n["restart_total"]) for n in namespaces_data), "unit": "restart", "target": 5},
         ],
