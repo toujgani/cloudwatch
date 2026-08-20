@@ -1,8 +1,31 @@
 cd "C:\Users\Red1 In The Ocean\Documents\Academics\Internship CIRES\cloudwatch"
-oc login --token=eyJhbGciOiJSUzI1NiIsImtpZCI6Ik44bmJtRDBQX3AwVG9JMm1rSVZBZUNScHdjbVRfUzM3cGR3RXJwZnFibjQifQ.eyJhdWQiOlsiaHR0cHM6Ly9vaWRjLm9wMS5vcGVuc2hpZnRhcHBzLmNvbS8yZmVnZ2V2bDRnbThoa2MxZXNuN3VkcXY2ZW9qcTRpaCJdLCJleHAiOjE4MTU0NzcwOTQsImlhdCI6MTc4Mzk0MTA5NCwiaXNzIjoiaHR0cHM6Ly9vaWRjLm9wMS5vcGVuc2hpZnRhcHBzLmNvbS8yZmVnZ2V2bDRnbThoa2MxZXNuN3VkcXY2ZW9qcTRpaCIsImp0aSI6IjhjZWE4NGY2LWM2YTgtNGY0Ny1hOGQyLWIzMjU0YzBmMDEzNiIsImt1YmVybmV0ZXMuaW8iOnsibmFtZXNwYWNlIjoicmVkMWludGhlb2NlYW4tZGV2Iiwic2VydmljZWFjY291bnQiOnsibmFtZSI6ImNsb3VkLWFpLW1vbml0b3Itc2EiLCJ1aWQiOiI2ZDQwNDQ3Ni1mZDJlLTQyZTItYTJjMi05YTg1MTdiY2ZhM2UifX0sIm5iZiI6MTc4Mzk0MTA5NCwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OnJlZDFpbnRoZW9jZWFuLWRldjpjbG91ZC1haS1tb25pdG9yLXNhIn0.jaToQOS4Q0WC_KTnbpXxv0d_Z6PGrjhm4Cjhvd8rMDXRmHHOfDhxo8fT6Z3J8MFuZnoDf2BMDocmd30-3ZEUSDSIO38oW7jmIJd0IQ8HpBP9iJKP-43xDOmZHcm0gUdZ7SB3Cljal6nIs0RCf7C9mXM81v6W8FvOdDuKbWpZDxrNGqXHy4i4Gy12l7U6Z4iA2IUXr_Iy3vOhsqjXTMXgnBHtimk0VOknseKp9ounLzL0FgH9lxSS1KQLJdE9GNWOJRe3Vk6ekDQi79H2bq-CaokvcXAm4bOcoKhUBNUvnVeYyHWi4lPSH7yPDi8BTsxzQlHAln_-KmY1hQ3jDwZ5swPbbUPTjpm3CJ8PU2Oerte281kWtZz4kDlxAbJBy4r5BItlE_oAJWt_lE3oQH3xj7DHnD4cXJrXLiRe8DXxpdWieeoVldYu_kGk1ggSxMqCzpcKPi5mBGi7OHK4vzOqr-SYSFFF4KEymp6fW6I1XoSwpl1IWWYona5ffY5VgV8DgSuIXWYPFLew-NNcKjH2oElkr1-hzOn8Xi2BqRLsxJVWZIbYnh8d5h52-xBx9284MK4uAaxVpN51xpJUK9wDFvzRXO0OGw8rzSo970Ikz1tC1a0L0JmLBzqitw-6539_qhuy3Tos-bpSuGMgBveJzlq4mkwDVXK4PkuGNEniPD0 --server="https://api.rm2.thpm.p1.openshiftapps.com:6443"
 
+# ── Step 1: Login ─────────────────────────────────────────────────────────────
+oc login --token=sha256~8DDmBGbzq6BOHHi27qJFSnCkfKB48pNcCKN-Nymg5U4 --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
 
+# ── Step 2: Apply secrets and configmap ───────────────────────────────────────
+oc apply -f openshift/secrets.yaml -n red1intheocean-dev
+oc apply -f openshift/configmap.yaml -n red1intheocean-dev
+
+# ── Step 3: Deploy PostgreSQL (first time only) ───────────────────────────────
+oc apply -f openshift/postgresql.yaml -n red1intheocean-dev
+oc rollout status deployment/postgresql -n red1intheocean-dev --timeout=120s
+
+# ── Step 4: Deploy app ────────────────────────────────────────────────────────
+oc apply -f openshift/deployment.yaml -n red1intheocean-dev
+
+# ── Step 5: Scale up ─────────────────────────────────────────────────────────
 oc scale deployment/postgresql --replicas=1 -n red1intheocean-dev
-
 oc scale deployment/cloud-ai-monitor --replicas=1 -n red1intheocean-dev
+
+# ── Step 6: Restart app pod (picks up new config) ────────────────────────────
 oc delete pod -l app=cloud-ai-monitor -n red1intheocean-dev
+
+# ── Step 7: Get the route URL ─────────────────────────────────────────────────
+oc get route cloud-ai-monitor -n red1intheocean-dev
+
+# ── Sandbox token info ────────────────────────────────────────────────────────
+# Short-lived login token (expires in ~24h): sha256~8DDmBGbzq6BOHHi27qJFSnCkfKB48pNcCKN-Nymg5U4
+# Long-lived service account token (expires 2036): stored in openshift/secrets.yaml KUBE_TOKEN
+# Namespace: red1intheocean-dev
+# Server: https://api.rm2.thpm.p1.openshiftapps.com:6443
