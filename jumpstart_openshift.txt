@@ -1,7 +1,8 @@
 cd "C:\Users\Red1 In The Ocean\Documents\Academics\Internship CIRES\cloudwatch"
 
 # ── Step 1: Login ─────────────────────────────────────────────────────────────
-oc login --token=sha256~8DDmBGbzq6BOHHi27qJFSnCkfKB48pNcCKN-Nymg5U4 --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
+# Short-lived user token (get fresh one from console.redhat.com → Copy login command)
+oc login --token=sha256~Ou9uTzeEzbC5XEeO32EMxNVgJ-ERDcRXKLeOaTw_ABE --server=https://api.rm2.thpm.p1.openshiftapps.com:6443
 
 # ── Step 2: Apply secrets and configmap ───────────────────────────────────────
 oc apply -f openshift/secrets.yaml -n red1intheocean-dev
