@@ -69,46 +69,57 @@ jobs:
 
       - name: Deploy PostgreSQL (if not exists)
         run: |
-          if ! oc get deployment postgresql -n ${{ env.OPENSHIFT_NAMESPACE }} 2>/dev/null; then
-            echo "Deploying PostgreSQL..."
+          set +e
+          oc get deployment postgresql -n ${{ env.OPENSHIFT_NAMESPACE }} > /dev/null 2>&1
+          PG_EXISTS=$?
+          set -e
+          if [ $PG_EXISTS -ne 0 ]; then
+            echo "PostgreSQL not found — deploying..."
             oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
             oc apply -f openshift/postgresql.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
             echo "Waiting for PostgreSQL to be ready..."
-            oc rollout status deployment/postgresql -n ${{ env.OPENSHIFT_NAMESPACE }} --timeout=120s
+            oc rollout status deployment/postgresql -n ${{ env.OPENSHIFT_NAMESPACE }} --timeout=120s || \
+              echo "PostgreSQL rollout still in progress — continuing anyway."
           else
-            echo "PostgreSQL already deployed, skipping."
+            echo "PostgreSQL already deployed — skipping."
           fi
 
       - name: Apply ConfigMap and Secrets
         run: |
           oc apply -f openshift/configmap.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
-          # Secrets are applied manually (not from CI/CD for security)
-          # Only update if they don't exist yet
-          if ! oc get secret cloudwatch-secrets -n ${{ env.OPENSHIFT_NAMESPACE }} 2>/dev/null; then
+          set +e
+          oc get secret cloudwatch-secrets -n ${{ env.OPENSHIFT_NAMESPACE }} > /dev/null 2>&1
+          SECRET_EXISTS=$?
+          set -e
+          if [ $SECRET_EXISTS -ne 0 ]; then
+            echo "Applying secrets for the first time..."
+            oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
+          else
+            echo "Secrets already exist — updating..."
             oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
           fi
 
       - name: Deploy Application
         run: |
-          # Ensure replicas are scaled up
           oc scale deployment/postgresql --replicas=1 -n ${{ env.OPENSHIFT_NAMESPACE }} || true
-          # Update the image tag in the deployment
           oc apply -f openshift/deployment.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
           oc set image deployment/cloud-ai-monitor \
             cloud-ai-monitor=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             -n ${{ env.OPENSHIFT_NAMESPACE }}
-          # Ensure app is scaled to 1
           oc scale deployment/cloud-ai-monitor --replicas=1 -n ${{ env.OPENSHIFT_NAMESPACE }}
 
       - name: Wait for rollout
         run: |
           oc rollout status deployment/cloud-ai-monitor \
             -n ${{ env.OPENSHIFT_NAMESPACE }} \
-            --timeout=300s || echo "Rollout still in progress — pod may need more time on sandbox (12h cycle)."
+            --timeout=300s || echo "Rollout still in progress — pod may need more time on sandbox."
 
       - name: Get Application URL
         if: always()
         run: |
-          ROUTE=$(oc get route cloud-ai-monitor -n ${{ env.OPENSHIFT_NAMESPACE }} -o jsonpath='{.spec.host}')
-          echo "🚀 Application deployed at: https://${ROUTE}"
-          echo "ROUTE_URL=https://${ROUTE}" >> $GITHUB_ENV
+          ROUTE=$(oc get route cloud-ai-monitor -n ${{ env.OPENSHIFT_NAMESPACE }} -o jsonpath='{.spec.host}' 2>/dev/null || echo "route-not-found")
+          if [ "$ROUTE" != "route-not-found" ] && [ -n "$ROUTE" ]; then
+            echo "Application deployed at: https://${ROUTE}"
+          else
+            echo "Route not found — may need to be created manually with: oc expose service cloud-ai-monitor"
+          fi
