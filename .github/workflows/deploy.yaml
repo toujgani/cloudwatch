@@ -87,17 +87,10 @@ jobs:
       - name: Apply ConfigMap and Secrets
         run: |
           oc apply -f openshift/configmap.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
-          set +e
-          oc get secret cloudwatch-secrets -n ${{ env.OPENSHIFT_NAMESPACE }} > /dev/null 2>&1
-          SECRET_EXISTS=$?
-          set -e
-          if [ $SECRET_EXISTS -ne 0 ]; then
-            echo "Applying secrets for the first time..."
-            oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
-          else
-            echo "Secrets already exist — updating..."
-            oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}
-          fi
+          # Apply secrets — requires 'edit' role on the service account
+          # If forbidden, secrets must be applied manually: oc apply -f openshift/secrets.yaml
+          oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }} || \
+            echo "WARNING: Could not apply secrets (permission denied). Run manually: oc apply -f openshift/secrets.yaml -n ${{ env.OPENSHIFT_NAMESPACE }}"
 
       - name: Deploy Application
         run: |
